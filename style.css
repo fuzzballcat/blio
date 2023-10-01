@@ -1,0 +1,202 @@
+@font-face {
+  font-family: "BQN386";
+  src: local("BQN386"), url("./BQN386.ttf");
+}
+
+*,:root {
+  color: #2f2f2f;
+  background-color: #f6f6f6;
+
+  font-size: inherit;
+  font-family: inherit;
+  font-weight: inherit;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+html, body {
+  padding: 15px;
+  overflow-x: hidden;
+
+  font-family: BQN386, sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.columns {
+  display: flex;
+}
+
+.item {
+  flex: 1;
+  min-width: 0;
+}
+
+#title {
+  font-size: 5em;
+}
+
+.padder {
+  max-width: calc(50vw - 500px);
+}
+
+#pbox {
+  margin-top: 10px;
+  border: 1px solid black;
+  border-radius: 10px;
+  height: auto;
+  background: #fdfdfd;
+}
+
+#languagebar {
+  border-radius: 10px;
+  background: none;
+  padding: 5px;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+@media(max-width: 600px){
+  #languagebar:after{
+    flex-grow: 50 !important;
+  }
+}
+
+#languagebar:after{
+  content: '';
+  flex-grow: 1;
+  transition: flex-grow 1s ease;
+}
+
+#editor {
+  flex: 1 0 20em;
+  position: relative;
+  font-size: 1.5em;
+}
+
+.edit {
+  border: none;
+  resize: none;
+  outline: none;
+
+  width: calc(100% - 5px);
+  height: calc(300px - 1.5em - 1.5em - 7px);
+
+  border-radius: 10px;
+  white-space: break-spaces;
+  word-break: break-word;
+
+  font-size: inherit;
+}
+
+#srcdisplay > * {
+  font-size: inherit;
+}
+
+#srcinput {
+  color: transparent;
+  caret-color: black;
+}
+
+#srcdisplay {
+  background: transparent;
+  color: #000;
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: 0px;
+  margin-left: 2px;
+  padding: 0px;
+  pointer-events: none;
+}
+
+#srcdisplay > * {
+  background: transparent;
+}
+
+.hi_f {
+  color: #3fb2eb;
+}
+.hi_m {
+  color: #f0c36f;
+}
+.hi_s {
+  color: #44c265;
+}
+.hi_c {
+  color: #f84;
+}
+.hi_k {
+  color: #000;
+}
+
+#runresult {
+  background: none;
+  text-align: left;
+  font-size: 1.5em;
+  height: auto;
+  padding: 10px;
+  white-space: pre-wrap;
+}
+
+#runbar {
+  height: 1.5em;
+  border-radius: 10px;
+  background: #fdfdfd;
+  text-align: right;
+  padding-right: 20px;
+  height: auto;
+}
+
+#run {
+  background: #f6f6f6;
+  border: 1px solid black;
+  height: 2em;
+  padding-left: 10px;
+  padding-right: 10px;
+  top: 0.75em;
+}
+
+.glyphbutton {
+  background: none;
+  border: none;
+  font-size: 1.5em;
+  text-align: center;
+  padding: 0px;
+  width: 0.75em;
+  flex: 1 0 auto;
+}
+
+.glyphbutton:hover .glyphbuttontooltip {
+  opacity: 0.8;
+  visibility: visible;
+}
+
+.glyphbuttontooltip {
+  font-size: 0.8em;
+  transition: opacity 0.1s;
+  visibility: hidden;
+  opacity: 0;
+  background: #080808;
+  color: #fdfdfd;
+  border-radius: 10px;
+  padding: 10px;
+  position: absolute;
+  z-index: 1000;
+}
+
+button {
+  position: relative;
+  border-radius: 5px;
+}
+
+button:hover {
+  color: #aaa;
+}
+
+button:active {
+  transform: translateY(3px);
+}
