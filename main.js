@@ -83,11 +83,14 @@ function hl(s){
   };
   const sanitize = s=>s.replace(/[&<>"'/]/ig, match=>smap[match]);
 
-  s = s.split("'").map((v, i) => {
+  s = s.split("'");
+  s = s.map((v, i) => {
     if(i % 2 == 0){
       return v.replace(new RegExp([...functions, ...modifiers, ...constants].map(f=>f.match(/[0-9]/)?f:"\\"+f).join("|"), "g"), f=>"<span class=\"" + hl_class(f) + "\">" + sanitize(f) +"</span>");;
-    } else {
+    } else if(i !== s.length - 1) {
       return "<span class='hi_s'>'" + v + "'</span>";
+    } else {
+      return "<span class='hi_s'>'" + v + "</span>";
     }
   }).join("");
 
@@ -774,7 +777,7 @@ function apply_f(f){
       let r = [];
       if(is_atomic(a)){
         for(let i = 0; i < a; i ++){
-          r.push(i);
+          r.push(i+1);
         }
       } else {
         let exists = [];
@@ -789,21 +792,30 @@ function apply_f(f){
       stack.push(r);
       break;
     }
+    case BC.INDICESOF: {
+      let a = stack.pop();
+      let b = stack.pop();
+      if(is_atomic(b)) b = [b];
+      if(is_atomic(a)) a = [a];
+
+      let r = [];
+      let upto = [];
+      for(let i = 0; i < b.length; i ++){
+        upto.push(b[i]);
+
+        if(upto.length > a.length) upto.shift();
+        if(is_match(upto, a)){
+          r.push(i - a.length + 2);
+        }
+      }
+      stack.push(r);
+      break;
+    }
     case BC.FINDSEQ: {
       let a = stack.pop();
       let b = stack.pop();
       if(is_atomic(b)) b = [b];
-      
-      if(is_atomic(a)) {
-        let r = [];
-        for(let i = 0; i < b.length; i ++){
-          if(is_match(a, b[i])) {
-            r.push(i);
-          }
-        }
-        stack.push(r);
-        break;
-      }
+      if(is_atomic(a)) a = [a];
 
       let r = [];
       let upto = [];
