@@ -76,7 +76,7 @@ html, body {
   position: relative;
   font-size: 1.5em;
 
-  width: calc(100% - 5px);
+  width: 100%;
   height: calc(300px - 1.5em - 1.5em - 7px);
 }
 
@@ -91,6 +91,12 @@ html, body {
   height: 100%;
 
   font-size: inherit;
+
+  margin-top: 5px;
+  margin-bottom: 0px;
+  margin-right: 0px;
+  margin-left: 5px;
+  padding: 0px;
 }
 
 #srcdisplay > * {
@@ -113,11 +119,6 @@ html, body {
   position: absolute;
   top: 0;
   left: 0;
-  margin-top: 0px;
-  margin-bottom: 0px;
-  margin-right: 0px;
-  margin-left: 0.1em;
-  padding: 0px;
   pointer-events: none;
 }
 

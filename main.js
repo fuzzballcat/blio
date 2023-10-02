@@ -1,3 +1,10 @@
+/*
+
+⊆≠⊃ (10 18 19) 2 'Keep this, lets remove this, and keep this also'
+○⊃≠ (10 18 19) 2
+
+*/
+
 import './style.css'
 
 const bar = document.getElementById("languagebar");
@@ -11,8 +18,8 @@ text.addEventListener("keydown", e => {
   }
 }, false);
 
-const glyphs = "⍬+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊂⊆⌽⊖,#!⍳⍸&⍒⍋¨⍨⍩∵/\\∘⍤⍣⍥○()'";
-const functions = "+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊂⊆⌽⊖,#!⍳⍸&⍒⍋¨⍨⍩∵()";
+const glyphs = "⍬+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊃⊂⊆⌽⊖,#!⍳⍸&⍒⍋¨⍨⍩∵/\\∘⍤⍣⍥○()'";
+const functions = "+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊃⊂⊆⌽⊖,#!⍳⍸&⍒⍋¨⍨⍩∵()";
 const modifiers = "/\\∘⍤⍣⍥○";
 const constants = "⍬1234567890";
 const stackers = "¨⍨⍩∵()";
@@ -41,8 +48,9 @@ const info = {
   ">": "Greater\n2→1",
   "≡": "Match\n2→1",
   "≢": "Not match\n2→1",
+  "⊃": "Replicate\n1→1",
   "⊂": "Index\n2→1",
-  "⊆": "Group\n2←1",
+  "⊆": "Keep\n2→1",
   "⊖": "Rotate\n2→1",
   "⌽": "Reverse\n1→1",
   ",": "Catenate\n2→1",
@@ -232,7 +240,8 @@ const BC = [
   "LESSEQ",
   "GREATEREQ",
   "INDEX",
-  "GROUP",
+  "KEEP",
+  "REPLICATE",
   "ROTATE",
   "REVERSE",
   "CATENATE",
@@ -311,8 +320,9 @@ function parse(ts){
         "≥": BC.GREATEREQ,
         "≡": BC.MATCH,
         "≢": BC.NMATCH,
+        "⊃": BC.REPLICATE,
         "⊂": BC.INDEX,
-        "⊆": BC.GROUP,
+        "⊆": BC.KEEP,
         "⌽": BC.REVERSE,
         "⊖": BC.ROTATE,
         ",": BC.CATENATE,
@@ -707,31 +717,33 @@ function apply_f(f){
       stack[l] = mpervade(a=>stack[l][a-1],a);
       break;
     }
-    case BC.GROUP: {
-      const indices = stack.pop();
-      const from = stack.pop();
+    case BC.REPLICATE: {
+      let indices = stack.pop();
 
-      if(is_atomic(indices)){
-        stack.push(from[indices]);
-        break;
-      }
+      if(is_atomic(indices)) indices = [indices];
 
       let result = [];
       for(let i = 0; i < indices.length; i ++){
-        let index_list = indices[i];
-        if(!Array.isArray(index_list)) index_list = [index_list];
-
-        for(let index of index_list){
-          if(index == 0) continue;
-
-          while(index-1 >= result.length){
-            result.push([]);
-          }
-          result[index-1].push(from[i]);
+        for(let j = 0; j < indices[i]; j ++){
+          result.push(i+1);
         }
       }
       stack.push(result);
-      break;        
+      break;
+    }
+    case BC.KEEP: {
+      let indices = stack.pop();
+      const array = stack.pop();
+      if(is_atomic(indices)) indices = [indices];
+
+      let result = [];
+      for(let i = 0; i < indices.length; i ++){
+        if(indices[i]){
+          result.push(array[i]);
+        }
+      }
+      stack.push(result);
+      break;
     }
     case BC.ROTATE: {
       const a = stack.pop();
