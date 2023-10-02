@@ -79,7 +79,6 @@ html, body {
 
 .edit {
   border: none;
-  resize: none;
   outline: none;
 
   width: calc(100% - 5px);
@@ -94,11 +93,16 @@ html, body {
 
 #srcdisplay > * {
   font-size: inherit;
+  line-height: inherit;
+  font-family: inherit;
 }
 
 #srcinput {
+  background: transparent;
   color: transparent;
   caret-color: black;
+  resize: none;
+  overflow: hidden;
 }
 
 #srcdisplay {
@@ -107,8 +111,10 @@ html, body {
   position: absolute;
   top: 0;
   left: 0;
-  margin: 0px;
-  margin-left: 2px;
+  margin-top: 0px;
+  margin-bottom: 0px;
+  margin-right: 0px;
+  margin-left: 0.1em;
   padding: 0px;
   pointer-events: none;
 }
