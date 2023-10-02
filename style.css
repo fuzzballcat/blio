@@ -1,6 +1,6 @@
 @font-face {
   font-family: "BQN386";
-  src: local("BQN386"), url("./BQN386.ttf");
+  src: url("/blio/BQN386.ttf");
 }
 
 *,:root {
