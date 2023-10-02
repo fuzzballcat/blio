@@ -105,8 +105,11 @@ function insertAtCursor(area, text) {
     area.focus();
     document.selection.createRange().text = myValue;
   } else if (area.selectionStart || area.selectionStart == '0') {
-    area.value = area.value.substring(0, area.selectionStart) + text + area.value.substring(area.selectionEnd, area.value.length);
-    area.selectionStart = area.selectionEnd = area.selectionStart + text.length;
+    const start = area.selectionStart;
+    area.value = area.value.substring(0, start) + text + area.value.substring(area.selectionEnd, area.value.length);
+    area.focus();
+    area.selectionStart = start + text.length;
+    area.selectionEnd = start + text.length;
   } else {
     area.value += text;
   }
@@ -127,6 +130,7 @@ for(let glyph of glyphs){
 
   ng.addEventListener("click", e => {
     insertAtCursor(text, glyph);
+    text.dispatchEvent(new CustomEvent("input"));
   }, false);
 }
 
