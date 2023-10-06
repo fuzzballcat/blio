@@ -3,7 +3,7 @@ import './style.css'
 const bar = document.getElementById("languagebar");
 const text = document.getElementById("srcinput");
 
-text.value = "⌽⊂⍒-⍨×2\\+¨=' '¨',oN s\\'ereht on gninaem ot eht .eman'";
+text.value = (a=>a[Math.floor(Math.random() * a.length)])(["⌽⊂⍒-⍨×2\\+¨=' '¨',oN s\\'ereht on gninaem ot eht .eman'", "s←'questionably beatably deniably doubtedly'\nr←⊆+1×2,1=' 's ,' 's\n&¯1⊂⍋⍋=' 'r ,⊆≠' '¨r ⍴/+=' 'r ' un'"]);
 text.addEventListener("keydown", e => {
   if(e.keyCode == 13 && e.shiftKey){
     runresult.innerText = execSource(text.value);
@@ -11,10 +11,10 @@ text.addEventListener("keydown", e => {
   }
 }, false);
 
-const glyphs = "⍬+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊃⊂⊆⍳⍸⍒⍋⌽⊖&,#!¨⍨∵⍩/\\←()'";
-const functions = "+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊃⊂⊆⍳⍸⍒⍋⌽⊖&,#!¨⍨∵()";
+const glyphs = "⍬+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊃⊂⊆⍳⍸⍒⍋⌽⊖&,#!⍴¨⍨∵⍩/\\←()'";
+const functions = "+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊃⊂⊆⍳⍸⍒⍋⌽⊖&,#!⍴¨⍨∵()";
 const modifiers = "⍩/\\";
-const constants = "⍬1234567890";
+const constants = "⍬1234567890.";
 const stackers = "¨⍨∵←()";
 const info = {
   "⍬": "The empty array",
@@ -52,6 +52,7 @@ const info = {
   "⍳": "Indices-of\n2→1",
   "⍸": "Find sequence\n2→1",
   "&": "Take/drop\n2→1",
+  "⍴": "Reshape\n2→1",
   "⍋": "Grade up\n1→1",
   "⍒": "Grade down\n1→1",
   "¨": "Dup\n1→2",
@@ -177,7 +178,7 @@ function lex(v){
       tokens.push(str);
     }
 
-    else if(c.match(/[0-9]/)){
+    else if(c == "." || c.match(/[0-9]/)){
       let num = "";
       while(c.match(/[0-9]/)){
         num += c;
@@ -246,6 +247,7 @@ const BC = [
   "INDICESOF",
   "FINDSEQ",
   "TAKEDROP",
+  "RESHAPE",
   "GRADEUP",
   "GRADEDOWN",
   "DUP",
@@ -337,6 +339,7 @@ function parse(ts){
         "⍳": BC.INDICESOF,
         "⍸": BC.FINDSEQ,
         "&": BC.TAKEDROP,
+        "⍴": BC.RESHAPE,
         "⍋": BC.GRADEUP,
         "⍒": BC.GRADEDOWN,
 
@@ -908,6 +911,22 @@ function apply_f(f){
       }
       break;
     }
+    case BC.RESHAPE: {
+      let a = stack.pop();
+      if(is_atomic(a)) a = array([1], [a]);
+      if(a.shape.length > 1) return [false, "Cannot reshape with non-vector shape."];
+
+      let re = stack.pop();
+      if(is_atomic(re)) re = array([1], [re]);
+
+      let r = [];
+      const totallen = a.ravel.reduce((a,b)=>a*b, 1);
+      for(let i = 0; i < totallen; i ++){
+        r.push(re.ravel[i % re.ravel.length]);
+      }
+      stack.push(array(a.ravel, r));
+      break;
+    }
     case BC.GRADEUP: {
       let a_full = stack.pop();
       let r = [];
@@ -978,7 +997,6 @@ function vm(bc){
     if(bc[pc] == BC.ASSIGN){
       if(modifier_stack.length) return [false, "bytecode error: modifiers for ←"];
       env[bc[++pc]] = stack.pop();
-      console.log(env[bc[pc]]);
       pc ++;
       continue;
     }
