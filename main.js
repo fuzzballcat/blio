@@ -3,7 +3,7 @@ import './style.css'
 const bar = document.getElementById("languagebar");
 const text = document.getElementById("srcinput");
 
-text.value = "⌽⊂⍒-⍨×2\\+¨=' '¨'gniroB egaugnaL detnemelpmI ylddO'";
+text.value = "⌽⊂⍒-⍨×2\\+¨=' '¨',oN s\\'ereht on gninaem ot eht .eman'";
 text.addEventListener("keydown", e => {
   if(e.keyCode == 13 && e.shiftKey){
     runresult.innerText = execSource(text.value);
@@ -11,9 +11,9 @@ text.addEventListener("keydown", e => {
   }
 }, false);
 
-const glyphs = "⍬+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊃⊂⊆⌽⊖,#!⍳⍸&⍒⍋¨⍨⍩∵/\\∘⍤⍣⍥○()'";
-const functions = "+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊃⊂⊆⌽⊖,#!⍳⍸&⍒⍋¨⍨⍩∵()";
-const modifiers = "/\\∘⍤⍣⍥○";
+const glyphs = "⍬+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊃⊂⊆⍳⍸⍒⍋⌽⊖&,#!¨⍨⍩∵/\\()'";
+const functions = "+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊃⊂⊆⍳⍸⍒⍋⌽⊖&,#!¨⍨⍩∵()";
+const modifiers = "/\\";
 const constants = "⍬1234567890";
 const stackers = "¨⍨⍩∵()";
 const info = {
@@ -61,17 +61,12 @@ const info = {
 
   "/": "Fold\n1F",
   "\\": "Scan\n1F",
-  "⍤": "With-axes\n1F1",
-  "⍣": "Repeat\n1F1",
-  "∘": "Product\n1F1",
-  "⍥": "Over\n1F",
-  "○": "Under\n2F",
   "(": "Stack to array\n?→1\n(+Modifier delimiter)",
   ")": "Set array stack point\n0→0\n(+Modifier delimiter)",
   "'": "String",
 }
 
-const hl_class = g => stackers.includes(g) ? 'hi_k' : functions.includes(g) ? 'hi_f' : modifiers.includes(g) ? 'hi_m' : g[0] == "'" ? 'hi_s' : constants.includes(g) ? 'hi_c' : false;
+const hl_class = g => stackers.includes(g) ? 'hi_k' : functions.includes(g) ? 'hi_f' : modifiers.includes(g) ? 'hi_m' : g[0] == "'" ? 'hi_s' : constants.includes(g) ? 'hi_c' : g[0] === "\\" ? 'hi_e' : false;
 
 function hl(s){
   const smap = {
@@ -84,14 +79,14 @@ function hl(s){
   };
   const sanitize = s=>s.replace(/[&<>"'/]/ig, match=>smap[match]);
 
-  s = s.split("'");
+  s = s.split(/(?<=(?<!\\)(?:\\\\)*)\'/);
   s = s.map((v, i) => {
     if(i % 2 == 0){
-      return v.replace(new RegExp([...functions, ...modifiers, ...constants].map(f=>f.match(/[0-9]/)?f:"\\"+f).join("|"), "g"), f=>"<span class=\"" + hl_class(f) + "\">" + sanitize(f) +"</span>");;
+      return v.replace(new RegExp([...functions, ...modifiers, ...constants].map(f=>f.match(/[0-9]/)?f:"\\"+f).join("|"), "g"), f=>"<span class=\"" + hl_class(f) + "\">" + sanitize(f) +"</span>");
     } else if(i !== s.length - 1) {
-      return "<span class='hi_s'>'" + v + "'</span>";
+      return "<span class='hi_s'>'" + v.split(/(\\.)/g).map(c => c.length == 2 && c[0] == "\\" ? "<span class='hi_e'>" + sanitize(c) + "</span>" : c).join("") + "'</span>";
     } else {
-      return "<span class='hi_s'>'" + v + "</span>";
+      return "<span class='hi_s'>'" + sanitize(v) + "</span>";
     }
   }).join("");
 
@@ -155,9 +150,12 @@ function lex(v){
     if(c == "'"){
       let str = "";
       do {
+        if(c == '\\'){
+          c = v[++i];
+        }
         str += c;
         c = v[++i];
-        if(i >= v.length) break;
+        if(i >= v.length) return [false, 'Expected string terminator', i];
       } while (c != "'");
       tokens.push(str);
     }
@@ -198,7 +196,7 @@ function lex(v){
       tokens.push(parseFloat(num));
     }
 
-    else return [false, c, i];
+    else return [false, 'Unknown token ' + c, i];
   }
 
   return tokens;
@@ -220,6 +218,7 @@ const BC = [
   "ARRCLOSE",
   "MAX",
   "MIN",
+  "MOD",
   "NOT",
   "DISTANCE",
   "CEILING",
@@ -250,7 +249,6 @@ const BC = [
   "ROLL",
   "POP",
 
-  "OPROD",
   "FOLD",
   "SCAN"
 ].map((k,i)=>({[k]:i+1})).reduce((a,b)=>({...a,...b}));
@@ -375,8 +373,7 @@ function parse(ts){
 
       const r = {
         "/": BC.FOLD,
-        "\\": BC.SCAN,
-        "∘": BC.OPROD
+        "\\": BC.SCAN
       }[thists];
       if(r === undefined){
          return [false, "internalerror on '" + thists + "'"]; 
@@ -549,73 +546,80 @@ function mpervade(f, a){
 
 let stack = [];
 let array_stack = [];
+
+const dyadic_ariths = [BC.ADD, BC.SUB, BC.MUL, BC.DIV, BC.EXP, BC.LOG, BC.MAX, BC.MIN, BC.MOD, BC.EQUAL, BC.NEQUAL, BC.LESS, BC.GREATER, BC.LESSEQ, BC.GREATEREQ];
+const darith_to_fname = ["+", "-", "×", "÷", "*", "⍟", "↑", "↓", "%", "=", "≠"];
+const darith_fns = [(a,b)=>a+b, (a,b)=>a-b, (a,b)=>a*b, (a,b)=>a/b, Math.pow, (a,b)=>Math.log(a) / Math.log(b), Math.max, Math.min, (a,b)=>((a % b) + b) % b, (a,b)=>+(a === b), (a,b)=>+(a !== b), (a,b)=>+(a<b), (a,b)=>+(a>b), (a,b)=>+(a<=b), (a,b)=>+(a>=b)];
+function dyadic_arith(f){
+  const i = dyadic_ariths.indexOf(f);
+  let a = stack.pop();
+  if(a === undefined) return [false, darith_to_fname[i] + ': Expected a value'];
+  let l = stack.length - 1;
+  if(l < 0) return [false, darith_to_fname[i] + ': Expected another value'];
+
+  let r = pervade(darith_fns[i],stack[l],a);
+  if(r === undefined)  return [false, darith_to_fname[i] + ': Shape mismatch'];
+  stack[l] = r;
+}
+
+const monadic_ariths = [BC.NEGATE, BC.NOT, BC.CEILING, BC.FLOOR];
+const marith_to_fname = ["¯", "~", "⌈", "⌊"];
+const marith_fns = [a=>-a, a=>+!a, Math.ceil, Math.floor];
+function monadic_arith(f){
+  const i = monadic_ariths.indexOf(f);
+
+  let l = stack.length - 1;
+  if(l < 0) return [false, marith_to_fname[i] + ': Expected a value'];
+  stack[l] = mpervade(marith_fns[i], stack[l]);
+}
+
 function apply_f(f){
   switch(f){
-    case BC.ADD: {
-      let a = stack.pop();
-      let l = stack.length - 1;
-      let r = pervade((a,b)=>a+b,stack[l],a);
-      if(r === undefined) return [false, "+: Shape mismatch"];
-      stack[l] = r;
+    case BC.NEGATE:
+    case BC.NOT:
+    case BC.CEILING:
+    case BC.FLOOR: {
+      const r = monadic_arith(f);
+      if(r) return r;
       break;
     }
-    case BC.SUB: {
-      let a = stack.pop();
-      let l = stack.length - 1;
-      let r = pervade((a,b)=>a-b,stack[l],a);
-      if(r === undefined) return [false, "-: Shape mismatch"];
-      stack[l] = r;
+
+    case BC.ADD: 
+    case BC.SUB: 
+    case BC.MUL:
+    case BC.DIV:
+    case BC.EXP:
+    case BC.LOG:
+    case BC.MAX:
+    case BC.MIN: 
+    case BC.MOD:
+    case BC.EQUAL:
+    case BC.NEQUAL:
+    case BC.LESS:
+    case BC.GREATER:
+    case BC.LESSEQ:
+    case BC.GREATEREQ: {
+      const r = dyadic_arith(f);
+      if(r) return r;
       break;
     }
-    case BC.NEGATE: {
-      let l = stack.length - 1;
-      stack[l] = mpervade(a=>-a,stack[l]);
-      break;
-    }
-    case BC.MUL: {
-      let a = stack.pop();
-      let l = stack.length - 1;
-      let r = pervade((a,b)=>a*b,stack[l],a);
-      if(r === undefined) return [false, "×: Shape mismatch"];
-      stack[l] = r;
-      break;
-    }
-    case BC.DIV: {
-      let a = stack.pop();
-      let l = stack.length - 1;
-      let r = pervade((a,b)=>a/b,stack[l],a);
-      if(r === undefined) return [false, "÷: Shape mismatch"];
-      stack[l] = r;
-      break;
-    }
-    case BC.EXP: {
-      let a = stack.pop();
-      let l = stack.length - 1;
-      let r = pervade(Math.pow,stack[l],a);
-      if(r === undefined) return [false, "*: Shape mismatch"];
-      stack[l] = r;
-      break;
-    }
-    case BC.LOG: {
-      let a = stack.pop();
-      let l = stack.length - 1;
-      let r = pervade((a,b)=>Math.log(a) / Math.log(b),stack[l],a);
-      if(r === undefined) return [false, "⍟: Shape mismatch"];
-      stack[l] = r;
-      break;
-    }
+
     case BC.MATINV: {
       let l = stack.length - 1;
+      if(l < 0) return [false, "⌹: Expected a value"];
       const r = matrix_invert(stack[l]);
       if(r.length && r[0] === false) return r;
       stack[l] = r;
       break;
     }
+
     case BC.ARROPEN: {
       array_stack.push(stack.length);
       break;
     }
+
     case BC.ARRCLOSE: {
+      if(!array_stack.length) return [false, "(: Mismatched parenthesis"];
       const top = array_stack.pop();
       const l = stack.length;
       let res = array([], []);
@@ -639,27 +643,7 @@ function apply_f(f){
       stack.push(res);
       break;
     }
-    case BC.MAX: {
-      const a = stack.pop();
-      let l = stack.length - 1;
-      let r = pervade(Math.max,stack[l],a);
-      if(r === undefined) return [false, "↑: Shape mismatch"];
-      stack[l] = r;
-      break;
-    }
-    case BC.MIN: {
-      const a = stack.pop();
-      let l = stack.length - 1;
-      let r = pervade(Math.min,stack[l],a);
-      if(r === undefined) return [false, "↑: Shape mismatch"];
-      stack[l] = r;
-      break;
-    }
-    case BC.NOT: {
-      let l = stack.length - 1;
-      stack[l] = mpervade(a=>+!a, stack[l]);
-      break;
-    }
+
     case BC.DISTANCE: {
       const a = stack.pop();
       const b = stack.pop();
@@ -677,24 +661,6 @@ function apply_f(f){
       stack.push(Math.sqrt(sum));
       break;
     }
-    case BC.CEILING: {
-      let l = stack.length - 1;
-      stack[l] = mpervade(Math.ceil, stack[l]);
-      break;
-    }
-    case BC.FLOOR: {
-      let l = stack.length - 1;
-      stack[l] = mpervade(Math.floor, stack[l]);
-      break;
-    }
-    case BC.MOD: {
-      const a = stack.pop();
-      let l = stack.length - 1;
-      let r = pervade((a,b)=>((a % b) + b) % b,stack[l],a);
-      if(r === undefined) return [false, "%: Shape mismatch"];
-      stack[l] = r;
-      break;
-    }
     case BC.MATCH: {
       const a = stack.pop();
       let l = stack.length - 1;
@@ -707,54 +673,7 @@ function apply_f(f){
       stack[l] = +!is_match(stack[l], a);
       break;
     }
-    case BC.EQUAL: {
-      const a = stack.pop();
-      let l = stack.length - 1;
-      let r = pervade((a,b)=>+(a===b),stack[l],a);
-      if(r === undefined) return [false, "=: Shape mismatch"];
-      stack[l] = r;
-      break;
-    }
-    case BC.NEQUAL: {
-      const a = stack.pop();
-      let l = stack.length - 1;
-      let r = pervade((a,b)=>+(a!==b),stack[l],a);
-      if(r === undefined) return [false, "≠: Shape mismatch"];
-      stack[l] = r;
-      break;
-    }
-    case BC.LESS: {
-      const a = stack.pop();
-      let l = stack.length - 1;
-      let r = pervade((a,b)=>+(a<b),stack[l],a);
-      if(r === undefined) return [false, "<: Shape mismatch"];
-      stack[l] = r;
-      break;
-    }
-    case BC.GREATER: {
-      const a = stack.pop();
-      let l = stack.length - 1;
-      let r = pervade((a,b)=>+(a>b),stack[l],a);
-      if(r === undefined) return [false, ">: Shape mismatch"];
-      stack[l] = r;
-      break;
-    }
-    case BC.LESSEQ: {
-      const a = stack.pop();
-      let l = stack.length - 1;
-      let r = pervade((a,b)=>+(a<=b),stack[l],a);
-      if(r === undefined) return [false, "≤: Shape mismatch"];
-      stack[l] = r;
-      break;
-    }
-    case BC.GREATEREQ: {
-      const a = stack.pop();
-      let l = stack.length - 1;
-      let r = pervade((a,b)=>+(a>=b),stack[l],a);
-      if(r === undefined) return [false, "≥: Shape mismatch"];
-      stack[l] = r;
-      break;
-    }
+    
     case BC.INDEX: {
       const a = stack.pop();
       let l = stack.length - 1;
@@ -1039,7 +958,7 @@ function vm(bc){
       pc ++;
     }
 
-    while(pc < bc.length && [BC.FOLD, BC.SCAN, BC.OPROD].includes(bc[pc])){
+    while(pc < bc.length && [BC.FOLD, BC.SCAN].includes(bc[pc])){
       modifier_stack.push(bc[pc++]);
     }
 
@@ -1120,55 +1039,6 @@ function vm(bc){
             break;
           }
 
-          // todo: actual nth product?
-          // todo: flatify
-          case BC.OPROD: {
-            to_f = () => {
-              // todo: actual arity check
-              if(stack.length == 1){
-                let res = [];
-                let a = stack.pop();
-                for(let i = 0; i < a.length; i ++){
-                  stack.push(a[i]);
-
-                  const r = old_f();
-                  if(r) return r;
-
-                  res.push(stack.pop());
-                }
-                stack.push(res);
-                return;
-              }
-
-              let a = stack.pop();
-              let b = stack.pop();
-              let res = [];
-
-              let consta = false;
-              let constb = false;
-              if(is_atomic(a)) { a = [a]; consta = true; }
-              if(is_atomic(b)) { b = [b]; constb = true; }
-              // todo: maybe not?
-
-              for(let i = 0; i < a.length; i ++){
-                res.push([]);
-                for(let j = 0; j < b.length; j ++){
-                  stack.push(b[j]);
-                  stack.push(a[i]);
-
-                  const r = old_f();
-                  if(r) return r;
-
-                  res[i].push(stack.pop());
-                }
-                if(constb) res = res.concat(res.pop());
-              }
-              if(consta) res = res[0];
-              stack.push(res);
-            };
-            break;
-          }
-
           default:
             return [false, "bytecode error on '" + pm + "'"];
         }
@@ -1180,6 +1050,8 @@ function vm(bc){
     
     pc ++;
   }
+
+  if(array_stack.length) return [false, '): Mismatched parenthesis'];
 
   return stack.map(Stringify).join("\n");
 }
@@ -1204,7 +1076,7 @@ function Stringify(v){
         }
       }
 
-      r += ''+v.ravel[i] + " ";
+      r += ''+v.ravel[i] + (typeof(v.ravel[i]) === 'string' ? "" : " ");
     }
     return r;
   }
@@ -1214,7 +1086,7 @@ function Stringify(v){
 function execSource(v){
   let tokens = lex(v);
   if(tokens.length && tokens[0] === false){
-    let string = "error: unknown token " + tokens[1] + "\n\n";
+    let string = "error: " + tokens[1] + "\n\n";
 
     let index = 0;
     for(let line of v.split("\n")){

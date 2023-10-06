@@ -122,7 +122,7 @@ html, body {
   pointer-events: none;
 }
 
-#srcdisplay > * {
+#srcdisplay > *, #srcdisplay > * > * {
   background: transparent;
 }
 
@@ -140,6 +140,9 @@ html, body {
 }
 .hi_k {
   color: #000;
+}
+.hi_e {
+  color: #f00;
 }
 
 #runresult {
