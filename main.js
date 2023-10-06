@@ -11,11 +11,11 @@ text.addEventListener("keydown", e => {
   }
 }, false);
 
-const glyphs = "⍬+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊃⊂⊆⍳⍸⍒⍋⌽⊖&,#!¨⍨⍩∵/\\()'";
-const functions = "+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊃⊂⊆⍳⍸⍒⍋⌽⊖&,#!¨⍨⍩∵()";
-const modifiers = "/\\";
+const glyphs = "⍬+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊃⊂⊆⍳⍸⍒⍋⌽⊖&,#!¨⍨∵⍩/\\←()'";
+const functions = "+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊃⊂⊆⍳⍸⍒⍋⌽⊖&,#!¨⍨∵()";
+const modifiers = "⍩/\\";
 const constants = "⍬1234567890";
-const stackers = "¨⍨⍩∵()";
+const stackers = "¨⍨∵←()";
 const info = {
   "⍬": "The empty array",
   "+": "Add\n2→1",
@@ -56,11 +56,13 @@ const info = {
   "⍒": "Grade down\n1→1",
   "¨": "Dup\n1→2",
   "⍨": "Swap\n2→2",
-  "⍩": "Roll\n3→3",
   "∵": "Pop\n1→0",
 
+  "⍩": "Dip\n1F",
   "/": "Fold\n1F",
   "\\": "Scan\n1F",
+
+  "←": "Assign",
   "(": "Stack to array\n?→1\n(+Modifier delimiter)",
   ")": "Set array stack point\n0→0\n(+Modifier delimiter)",
   "'": "String",
@@ -205,6 +207,8 @@ function lex(v){
 const BC = [
   "CONST",
   "FUNCTION",
+  "ASSIGN",
+  "NAME",
 
   "ADD",
   "NEGATE",
@@ -246,9 +250,9 @@ const BC = [
   "GRADEDOWN",
   "DUP",
   "SWAP",
-  "ROLL",
   "POP",
 
+  "DIP",
   "FOLD",
   "SCAN"
 ].map((k,i)=>({[k]:i+1})).reduce((a,b)=>({...a,...b}));
@@ -280,6 +284,13 @@ function parse(ts){
 
     if(typeof(thists) == 'number') {
       bcr.push(BC.CONST, thists);
+    }
+
+    else if(thists == '←'){
+      parse_index ++;
+      if(parse_index >= ts.length) return [false, 'expected name after ←'];
+      if(typeof(ts[parse_index]) !== 'string') return [false, 'expected name after ←'];
+      bcr.push(BC.ASSIGN, ts[parse_index]);
     }
 
     else if(thists.length && thists[0] == "'"){
@@ -334,7 +345,6 @@ function parse(ts){
 
         "¨": BC.DUP,
         "⍨": BC.SWAP,
-        "⍩": BC.ROLL,
         "∵": BC.POP
       }[thists];
       if(r === undefined){
@@ -373,12 +383,16 @@ function parse(ts){
 
       const r = {
         "/": BC.FOLD,
-        "\\": BC.SCAN
+        "\\": BC.SCAN,
+        "⍩": BC.DIP
       }[thists];
       if(r === undefined){
          return [false, "internalerror on '" + thists + "'"]; 
       } 
       bcr.splice(bcr.length - 1 - +last_was_cpr, 0, r);
+    } else if(typeof(thists) == 'string'){
+      // id
+      bcr.push(BC.NAME, thists);
     }
 
     else return [false, "parse error on '" + thists + "'"];
@@ -682,7 +696,7 @@ function apply_f(f){
 
       if(is_atomic(a)){
         const st = (a-1) * per;
-        stack[l] = array(stack[l].shape.slice(1), stack[l].ravel.slice(st, st + per));
+        stack[l] = stack[l].shape.length === 1 ? stack[l].ravel[st] : array(stack[l].shape.slice(1), stack[l].ravel.slice(st, st + per));
         break;
       }
 
@@ -715,8 +729,11 @@ function apply_f(f){
       const arr = stack.pop();
 
       if(is_atomic(arr) && is_atomic(indices)) {
-        if(indices) stack.push(array([1], [arr]));
-        else stack.push(array([0], []));
+        let r = [];
+        for(let i = 0; i < indices; i ++){
+          r.push(arr);
+        }
+        stack.push(array([r.length], r));
         break;
       }
 
@@ -727,7 +744,7 @@ function apply_f(f){
       let klen = 0;
       let leadingper = arr.ravel.length / arr.shape[0];
       for(let i = 0; i < indices.ravel.length; i ++){
-        if(indices.ravel[i]){
+        for(let q = 0; q < indices.ravel[i]; q ++){
           result = result.concat(arr.ravel.slice(i * leadingper, i * leadingper + leadingper));
           klen ++;
         }
@@ -769,7 +786,7 @@ function apply_f(f){
       let l = stack.length-1;
       if(is_atomic(a)) a = array([1], [a]);
       if(is_atomic(stack[l])) stack[l] = array([1], stack[l]);
-      
+
       if(stack[l].shape.length === a.shape.length) {
         for(let i = 1; i < stack[l].shape.length; i ++){
           if(stack[l].shape[i] !== a.shape[i]) return [false, ",: Shape mismatch"];
@@ -928,15 +945,6 @@ function apply_f(f){
       stack.push(b);
       break;
     }
-    case BC.ROLL: {
-      const a = stack.pop();
-      const b = stack.pop();
-      const c = stack.pop();
-      stack.push(a);
-      stack.push(c);
-      stack.push(b);
-      break;      
-    }
     case BC.POP: {
       stack.pop();
       break;
@@ -947,22 +955,33 @@ function apply_f(f){
   }
 }
 
+let env = {};
 function vm(bc){
   //printBC(bc);
   let pc = 0;
+  env = {};
   while(pc < bc.length){
     let modifier_stack = [];
 
-    while(pc < bc.length && bc[pc] == BC.CONST){
-      stack.push(bc[++pc]);
+    while(pc < bc.length && bc[pc] === BC.CONST || bc[pc] === BC.NAME){
+      if(bc[pc] === BC.NAME) stack.push(JSON.parse(JSON.stringify(env[bc[++pc]])));
+      else stack.push(bc[++pc]);
       pc ++;
     }
 
-    while(pc < bc.length && [BC.FOLD, BC.SCAN].includes(bc[pc])){
+    while(pc < bc.length && [BC.FOLD, BC.SCAN, BC.DIP].includes(bc[pc])){
       modifier_stack.push(bc[pc++]);
     }
 
     if(pc >= bc.length) continue;
+
+    if(bc[pc] == BC.ASSIGN){
+      if(modifier_stack.length) return [false, "bytecode error: modifiers for ←"];
+      env[bc[++pc]] = stack.pop();
+      console.log(env[bc[pc]]);
+      pc ++;
+      continue;
+    }
 
     if(modifier_stack.length == 0) {
       const r = apply_f(bc[pc]);
@@ -1039,6 +1058,16 @@ function vm(bc){
             break;
           }
 
+          case BC.DIP: {
+            to_f = () => {
+              const a = stack.pop();
+              const r = old_f();
+              if(r) return r;
+              stack.push(a);
+            }
+            break;            
+          }
+
           default:
             return [false, "bytecode error on '" + pm + "'"];
         }
@@ -1049,6 +1078,11 @@ function vm(bc){
     }
     
     pc ++;
+
+    if(bc[pc] == BC.ASSIGN){
+      env[bc[++pc]] = stack.pop();
+      pc ++;
+    }
   }
 
   if(array_stack.length) return [false, '): Mismatched parenthesis'];
