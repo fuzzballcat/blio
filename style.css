@@ -162,7 +162,7 @@ html, body {
   height: auto;
 }
 
-#run {
+.rbutton {
   background: #f6f6f6;
   border: 1px solid black;
   height: 2em;
@@ -198,9 +198,14 @@ html, body {
   z-index: 1000;
 }
 
+#forward, #back {
+  border: none;
+}
+
 button {
   position: relative;
   border-radius: 5px;
+  user-select: none;
 }
 
 button:hover {

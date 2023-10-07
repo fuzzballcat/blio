@@ -3,7 +3,29 @@ import './style.css'
 const bar = document.getElementById("languagebar");
 const text = document.getElementById("srcinput");
 
-text.value = (a=>a[Math.floor(Math.random() * a.length)])(["⌽⊂⍒-⍨×2+\\¨=' '¨',oN s\\'ereht on gninaem ot eht .eman'", "s←'questionably beatably deniably doubtedly'\nr←⊆+1×2=' '¨,' 's\n&¯1⊂⍋⍋=' 'r ,⊆≠' '¨r ⍴+/=' 'r ' un'"]);
+const examples = [
+  "'factorial of 5 is' 5 { ∇⍆s ¨2<?{∵1}{¨1-s×} }", 
+  "',oN s\\'ereht on gninaem ot eht .eman'¨' '=¨\\+2×⍨-⍒⊂⌽", 
+  "'questionably beatably deniably doubtedly'→s\ns' ',¨' '=2×1+⊆→r\n' un' r' '=/+⍴r¨' '≠⊆, r' '=⍋⍋⊂1¯&"
+];
+
+let example_index = Math.floor(Math.random() * examples.length);
+
+document.getElementById("forward").addEventListener("click", e => {
+  example_index = (example_index + 1) % examples.length;
+  text.value = examples[example_index];
+  text.dispatchEvent(new CustomEvent("input"));
+  run.dispatchEvent(new CustomEvent("click"));
+}, false);
+
+document.getElementById("back").addEventListener("click", e => {
+  example_index = (((example_index - 1) % examples.length) + examples.length) % examples.length;
+  text.value = examples[example_index];
+  text.dispatchEvent(new CustomEvent("input"));
+  run.dispatchEvent(new CustomEvent("click"));
+}, false);
+
+text.value = examples[example_index];
 text.addEventListener("keydown", e => {
   if(e.keyCode === 13 && e.shiftKey){
     runresult.innerText = execSource(text.value);
@@ -11,11 +33,11 @@ text.addEventListener("keydown", e => {
   }
 }, false);
 
-const glyphs = "⍬ + ¯ - × ÷ ⌹ * ⍟ ↑ ↓ ~ | ⌈ ⌊ % < ≤ = ≥ > ≠ ≡ ≢ ⊃ ⊂ ⊆ ⍳ ⍸ ⍒ ⍋ ⌽ ⊖ & , # ! ⍴ ¨ ⍨ ∵ ⍩ ⍣ ⍤ / \\ ← () ' {}";
-const functions = "+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊃⊂⊆⍳⍸⍒⍋⌽⊖&,#!⍴¨⍨∵()";
-const modifiers = "⍩⍤⍣/\\";
+const glyphs = "⍬ + ¯ - × ÷ ⌹ * ⍟ ↑ ↓ ~ | ⌈ ⌊ % < ≤ = ≥ > ≠ ≡ ≢ ⊃ ⊂ ⊆ ⍳ ⍸ ⍒ ⍋ ⌽ ⊖ & , # ! ⍴ ∘ ¨ ⍨ ∵ ⍩ ⍣ ⍤ / \\ ? → ⍆ () '' ∇ {}";
+const functions = "+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊃⊂⊆⍳⍸⍒⍋⌽⊖&,#!⍴∘¨⍨∵()∇";
+const modifiers = "⍩⍤⍣/\\?";
 const constants = "⍬1234567890.";
-const stackers = "¨⍨∵←(){}";
+const stackers = "∘¨⍨∵→⍆()∇{}";
 const info = {
   "⍬": "Zilde",
   "+": "Add\n2→1",
@@ -55,6 +77,7 @@ const info = {
   "⍴": "Reshape\n2→1",
   "⍋": "Grade up\n1→1",
   "⍒": "Grade down\n1→1",
+  "∘": "Noop\n1→1",
   "¨": "Dup\n1→2",
   "⍨": "Swap\n2→2",
   "∵": "Pop\n1→0",
@@ -64,11 +87,14 @@ const info = {
   "\\": "Scan\n1F",
   "⍣": "Repeat\n1F1",
   "⍤": "Until\n2F",
+  "?": "If\n2F1",
 
-  "←": "Assign",
+  "→": "Assign",
+  "⍆": "Function assign",
   "()": "Stack to array\n?→1",
+  "∇": "Recur",
   "{}": "Defined function", 
-  "'": "String",
+  "''": "String"
 }
 
 const hl_class = g => stackers.includes(g) ? 'hi_k' : functions.includes(g) ? 'hi_f' : modifiers.includes(g) ? 'hi_m' : g[0] === "'" ? 'hi_s' : constants.includes(g) ? 'hi_c' : g[0] === "\\" ? 'hi_e' : false;
@@ -217,6 +243,7 @@ const BC = [
   "FOPEN",
   "FUNCTION",
   "ASSIGN",
+  "ASSIGNFN",
   "NAME",
 
   "ADD",
@@ -262,19 +289,24 @@ const BC = [
   "SWAP",
   "POP",
 
+  "RECUR",
+  "NOOP",
   "DIP",
   "REPEAT",
   "UNTIL",
   "FOLD",
-  "SCAN"
+  "SCAN",
+  "IF"
 ].map((k,i)=>({[k]:i+1})).reduce((a,b)=>({...a,...b}));
 
 function formatBC(bc){
   let r = [];
   for(let i = 0; i < bc.length; i ++){ 
     r.push(Object.keys(BC).find(k=>BC[k] === bc[i]));
-    if(bc[i] === BC.CONST) r.push(bc[++i]);
+    if(bc[i] === BC.CONST || bc[i] === BC.NAME) r.push(bc[++i]);
     else if(bc[i] === BC.FUNCTION) r.push(formatBC(bc[++i]));
+    else if(bc[i] === BC.ASSIGN) r.push(bc[++i]);
+    else if(bc[i] === BC.ASSIGNFN) r.push(bc[++i], bc[++i]);
   }
   return r;
 }
@@ -297,14 +329,14 @@ function parse(ts){
       bcr.push(BC.CONST, thists);
     }
 
-    else if(thists === "}"){
+    else if(thists === "{"){
       bcr.push(BC.FOPEN);
     }
 
-    else if(thists === "{"){
+    else if(thists === "}"){
       let f = [];
       while(1){
-        if(bcr.length === 0) return [false, 'Mismatched {'];
+        if(bcr.length === 0) return [false, 'Mismatched }'];
         const a = bcr.pop();
         if(a === BC.FOPEN) { 
           let constcount = 0;
@@ -319,11 +351,21 @@ function parse(ts){
       bcr.push(BC.FUNCTION, f.reverse());
     }
 
-    else if(thists === '←'){
+    else if(thists === '→'){
       parse_index ++;
-      if(parse_index >= ts.length) return [false, 'expected name after ←'];
-      if(typeof(ts[parse_index]) !== 'string') return [false, 'expected name after ←'];
+      if(parse_index >= ts.length) return [false, 'expected name after →'];
+      if(typeof(ts[parse_index]) !== 'string') return [false, 'expected name after →'];
       bcr.push(BC.ASSIGN, ts[parse_index]);
+    }
+
+    else if(thists === '⍆'){
+      parse_index ++;
+      if(parse_index >= ts.length) return [false, 'expected name after →'];
+      if(typeof(ts[parse_index]) !== 'string') return [false, 'expected name after →'];
+      
+      let f = bcr.pop();
+      if(Array.isArray(f)) bcr.pop();
+      bcr.push(BC.ASSIGNFN, ts[parse_index], [BC.FUNCTION, f]);
     }
 
     else if(thists.length && thists[0] === "'"){
@@ -374,9 +416,12 @@ function parse(ts){
         "⍋": BC.GRADEUP,
         "⍒": BC.GRADEDOWN,
 
-        "(": BC.ARRCLOSE,
-        ")": BC.ARROPEN,
+        "(": BC.ARROPEN,
+        ")": BC.ARRCLOSE,
 
+        "∇": BC.RECUR,
+
+        "∘": BC.NOOP,
         "¨": BC.DUP,
         "⍨": BC.SWAP,
         "∵": BC.POP
@@ -391,7 +436,8 @@ function parse(ts){
         "\\": BC.SCAN,
         "⍩": BC.DIP,
         "⍣": BC.REPEAT,
-        "⍤": BC.UNTIL
+        "⍤": BC.UNTIL,
+        "?": BC.IF
       }[thists];
       if(r === undefined){
          return [false, "internalerror on '" + thists + "'"]; 
@@ -974,6 +1020,8 @@ function apply_f(f){
       stack.pop();
       break;
     }
+    case BC.NOOP:
+      break;
 
     default:
       return [false, "bytecode error on '" + Object.keys(BC).find(k => BC[k] === f) + "'"];
@@ -984,17 +1032,35 @@ let env = {};
 function vm(bc){
   //printBC(bc);
   let pc = 0;
-  env = {};
   while(pc < bc.length){
+    if(bc[pc] === BC.ASSIGNFN){
+      const name = bc[++pc];
+      let val = bc[++pc];
+      if(!Array.isArray(val[1]) && val[1] === BC.RECUR){
+        val[1] = JSON.parse(JSON.stringify(bc));
+      }
+      env[name] = val;
+
+      pc ++;
+      continue;
+    }
+
     let modifier_stack = [];
 
     while(pc < bc.length && bc[pc] === BC.CONST || bc[pc] === BC.NAME){
-      if(bc[pc] === BC.NAME) stack.push(JSON.parse(JSON.stringify(env[bc[++pc]])));
+      if(bc[pc] === BC.NAME) {
+        const res = JSON.parse(JSON.stringify(env[bc[++pc]]));
+        if(Array.isArray(res)) {
+          const r = vm(res);
+          if(r.length && r[0] === false) return r;
+        }
+        else stack.push(res);
+      }
       else stack.push(bc[++pc]);
       pc ++;
     }
 
-    while(pc < bc.length && [BC.FOLD, BC.SCAN, BC.DIP, BC.REPEAT, BC.UNTIL].includes(bc[pc])){
+    while(pc < bc.length && [BC.FOLD, BC.SCAN, BC.DIP, BC.REPEAT, BC.UNTIL, BC.IF].includes(bc[pc])){
       modifier_stack.push(bc[pc++]);
     }
 
@@ -1011,6 +1077,9 @@ function vm(bc){
       if(bc[pc] === BC.FUNCTION) {
         const r = vm(bc[++pc]);
         if(r.length && r[0] === false) return r;
+      } else if(bc[pc] === BC.RECUR){
+        const r = vm(bc);
+        if(r.length && r[0] === false) return r;
       } else {
         const r = apply_f(bc[pc]);
         if(r) return r;
@@ -1025,6 +1094,12 @@ function vm(bc){
           if(r.length && r[0] === false) return r;
         };
       }
+      else if(bc[pc] === BC.RECUR){
+        to_f = () => {
+          const r = vm(bc);
+          if(r.length && r[0] === false) return r;
+        }
+      }
       else {
         const func = bc[pc];
         to_f = () => {
@@ -1035,6 +1110,31 @@ function vm(bc){
       while(modifier_stack.length > 0){
         const pm = modifier_stack.pop();
         const old_f = to_f;
+        let second_f;
+        if([BC.UNTIL, BC.IF].includes(pm)) {
+          pc ++;
+          if(bc[pc] === BC.FUNCTION){
+            pc++;
+            const func = bc[pc];
+            second_f = () => {
+              const r = vm(func);
+              if(r.length && r[0] === false) return r;
+            };
+          }
+          else if(bc[pc] === BC.RECUR){
+            second_f = () => {
+              const r = vm(bc);
+              if(r.length && r[0] === false) return r;
+            }
+          }
+          else {
+            const func = bc[pc];
+            second_f = () => {
+              const r = apply_f(func);
+              if(r) return r;
+            };
+          }
+        }
         switch(pm){
           case BC.FOLD: {
             to_f = () => {
@@ -1116,24 +1216,6 @@ function vm(bc){
 
           case BC.UNTIL: {
             to_f = () => {
-              pc ++;
-              let second_f;
-              if(bc[pc] === BC.FUNCTION){
-                pc++;
-                const func = bc[pc];
-                second_f = () => {
-                  const r = vm(func);
-                  if(r.length && r[0] === false) return r;
-                };
-              }
-              else {
-                const func = bc[pc];
-                second_f = () => {
-                  const r = apply_f(func);
-                  if(r) return r;
-                };
-              }
-
               let prev = false;
               while(1){
                 second_f();
@@ -1148,6 +1230,27 @@ function vm(bc){
                 }
                 prev = new_prev;
               }
+            }
+            break;
+          }
+
+          case BC.IF: {
+            to_f = () => {
+              const cond = stack.pop();
+
+              let diff = 0;
+              const stack_copy = JSON.parse(JSON.stringify(stack));
+              if(is_atomic(cond) ? cond : cond.ravel[0]){
+                old_f();
+              } else {
+                second_f();
+              }
+              const res = stack.pop();
+              diff = stack_copy.length - stack.length;
+              stack = stack_copy;
+
+              for(let i = 0; i < diff; i ++) stack.pop();
+              stack.push(res);
             }
             break;
           }
@@ -1221,19 +1324,8 @@ function execSource(v){
 
     return string;
   }
-  if(tokens[tokens.length - 1] !== "\n") tokens.push("\n");
 
-  let result = [];
-  let temp = [];
-  tokens.map(x => {  
-    if(x !== "\n") {
-      temp.push(x);
-    } else {
-      result.push(temp);
-      temp = [];
-    }
-  });
-  tokens = result.map(r => r.reverse()).flat();
+  tokens = tokens.filter(t => t !== "\n");
   const parsed = parse(tokens);
 
   if(parsed.length && parsed[0] === false) return parsed[1];
