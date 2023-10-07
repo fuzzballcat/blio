@@ -3,21 +3,21 @@ import './style.css'
 const bar = document.getElementById("languagebar");
 const text = document.getElementById("srcinput");
 
-text.value = (a=>a[Math.floor(Math.random() * a.length)])(["⌽⊂⍒-⍨×2\\+¨=' '¨',oN s\\'ereht on gninaem ot eht .eman'", "s←'questionably beatably deniably doubtedly'\nr←⊆+1×2,1=' 's ,' 's\n&¯1⊂⍋⍋=' 'r ,⊆≠' '¨r ⍴/+=' 'r ' un'"]);
+text.value = (a=>a[Math.floor(Math.random() * a.length)])(["⌽⊂⍒-⍨×2+\\¨=' '¨',oN s\\'ereht on gninaem ot eht .eman'", "s←'questionably beatably deniably doubtedly'\nr←⊆+1×2=' '¨,' 's\n&¯1⊂⍋⍋=' 'r ,⊆≠' '¨r ⍴+/=' 'r ' un'"]);
 text.addEventListener("keydown", e => {
-  if(e.keyCode == 13 && e.shiftKey){
+  if(e.keyCode === 13 && e.shiftKey){
     runresult.innerText = execSource(text.value);
     e.preventDefault();
   }
 }, false);
 
-const glyphs = "⍬+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊃⊂⊆⍳⍸⍒⍋⌽⊖&,#!⍴¨⍨∵⍩/\\←()'";
+const glyphs = "⍬ + ¯ - × ÷ ⌹ * ⍟ ↑ ↓ ~ | ⌈ ⌊ % < ≤ = ≥ > ≠ ≡ ≢ ⊃ ⊂ ⊆ ⍳ ⍸ ⍒ ⍋ ⌽ ⊖ & , # ! ⍴ ¨ ⍨ ∵ ⍩ ⍣ ⍤ / \\ ← () ' {}";
 const functions = "+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊃⊂⊆⍳⍸⍒⍋⌽⊖&,#!⍴¨⍨∵()";
-const modifiers = "⍩/\\";
+const modifiers = "⍩⍤⍣/\\";
 const constants = "⍬1234567890.";
-const stackers = "¨⍨∵←()";
+const stackers = "¨⍨∵←(){}";
 const info = {
-  "⍬": "The empty array",
+  "⍬": "Zilde",
   "+": "Add\n2→1",
   "-": "Subtract\n2→1",
   "×": "Multiply\n2→1",
@@ -62,14 +62,16 @@ const info = {
   "⍩": "Dip\n1F",
   "/": "Fold\n1F",
   "\\": "Scan\n1F",
+  "⍣": "Repeat\n1F1",
+  "⍤": "Until\n2F",
 
   "←": "Assign",
-  "(": "Stack to array\n?→1\n(+Modifier delimiter)",
-  ")": "Set array stack point\n0→0\n(+Modifier delimiter)",
+  "()": "Stack to array\n?→1",
+  "{}": "Defined function", 
   "'": "String",
 }
 
-const hl_class = g => stackers.includes(g) ? 'hi_k' : functions.includes(g) ? 'hi_f' : modifiers.includes(g) ? 'hi_m' : g[0] == "'" ? 'hi_s' : constants.includes(g) ? 'hi_c' : g[0] === "\\" ? 'hi_e' : false;
+const hl_class = g => stackers.includes(g) ? 'hi_k' : functions.includes(g) ? 'hi_f' : modifiers.includes(g) ? 'hi_m' : g[0] === "'" ? 'hi_s' : constants.includes(g) ? 'hi_c' : g[0] === "\\" ? 'hi_e' : false;
 
 function hl(s){
   const smap = {
@@ -84,10 +86,10 @@ function hl(s){
 
   s = s.split(/(?<=(?<!\\)(?:\\\\)*)\'/);
   s = s.map((v, i) => {
-    if(i % 2 == 0){
+    if(i % 2 === 0){
       return v.replace(new RegExp([...functions, ...modifiers, ...constants].map(f=>f.match(/[0-9]/)?f:"\\"+f).join("|"), "g"), f=>"<span class=\"" + hl_class(f) + "\">" + sanitize(f) +"</span>");
     } else if(i !== s.length - 1) {
-      return "<span class='hi_s'>'" + v.split(/(\\.)/g).map(c => c.length == 2 && c[0] == "\\" ? "<span class='hi_e'>" + sanitize(c) + "</span>" : c).join("") + "'</span>";
+      return "<span class='hi_s'>'" + v.split(/(\\.)/g).map(c => c.length === 2 && c[0] === "\\" ? "<span class='hi_e'>" + sanitize(c) + "</span>" : c).join("") + "'</span>";
     } else {
       return "<span class='hi_s'>'" + sanitize(v) + "</span>";
     }
@@ -106,7 +108,7 @@ function insertAtCursor(area, text) {
   if (document.selection) {
     area.focus();
     document.selection.createRange().text = myValue;
-  } else if (area.selectionStart || area.selectionStart == '0') {
+  } else if (area.selectionStart || area.selectionStart === '0') {
     const start = area.selectionStart;
     area.value = area.value.substring(0, start) + text + area.value.substring(area.selectionEnd, area.value.length);
     area.focus();
@@ -117,7 +119,7 @@ function insertAtCursor(area, text) {
   }
 }
 
-for(let glyph of glyphs){
+for(let glyph of glyphs.split(" ")){
   const ng = document.createElement("button");
   ng.classList.add("glyphbutton");
   const hc = hl_class(glyph);
@@ -133,6 +135,11 @@ for(let glyph of glyphs){
   ng.addEventListener("click", e => {
     insertAtCursor(text, glyph);
     text.dispatchEvent(new CustomEvent("input"));
+    if(glyph.length > 1){
+      text.focus();
+      text.selectionStart --;
+      text.selectionEnd --;
+    }
   }, false);
 }
 
@@ -148,12 +155,12 @@ function lex(v){
   for(let i = 0; i < v.length; i ++){
     let c = v[i];
 
-    if(c == " ") continue;
+    if(c === " ") continue;
 
-    if(c == "'"){
+    if(c === "'"){
       let str = "";
       do {
-        if(c == '\\'){
+        if(c === '\\'){
           c = v[++i];
         }
         str += c;
@@ -163,7 +170,7 @@ function lex(v){
       tokens.push(str);
     }
 
-    else if(c == "\n" || glyphs.includes(c)){
+    else if(c === "\n" || glyphs.includes(c)){
       tokens.push(c);
     }
 
@@ -178,14 +185,14 @@ function lex(v){
       tokens.push(str);
     }
 
-    else if(c == "." || c.match(/[0-9]/)){
+    else if(c === "." || c.match(/[0-9]/)){
       let num = "";
       while(c.match(/[0-9]/)){
         num += c;
         c = v[++i];
         if(i >= v.length) break;
       }
-      if(c == "."){
+      if(c === "."){
         num += c;
         c = v[++i];
         if(i < v.length) while(c.match(/[0-9]/)){
@@ -207,6 +214,7 @@ function lex(v){
 
 const BC = [
   "CONST",
+  "FOPEN",
   "FUNCTION",
   "ASSIGN",
   "NAME",
@@ -255,6 +263,8 @@ const BC = [
   "POP",
 
   "DIP",
+  "REPEAT",
+  "UNTIL",
   "FOLD",
   "SCAN"
 ].map((k,i)=>({[k]:i+1})).reduce((a,b)=>({...a,...b}));
@@ -280,30 +290,51 @@ function parse(ts){
   let parse_index = 0;
   const bcr = [];
 
-  let last_was_cpr = false;
   while(parse_index < ts.length){    
     const thists = ts[parse_index];
 
-    if(typeof(thists) == 'number') {
+    if(typeof(thists) === 'number') {
       bcr.push(BC.CONST, thists);
     }
 
-    else if(thists == '←'){
+    else if(thists === "}"){
+      bcr.push(BC.FOPEN);
+    }
+
+    else if(thists === "{"){
+      let f = [];
+      while(1){
+        if(bcr.length === 0) return [false, 'Mismatched {'];
+        const a = bcr.pop();
+        if(a === BC.FOPEN) { 
+          let constcount = 0;
+          while(bcr.length > 0 && constcount < bcr.length && bcr[bcr.length - 1 - constcount] === BC.CONST){
+            constcount ++;
+          }
+
+          if(constcount % 2 === 0) break;
+        }
+        f.push(a);
+      }
+      bcr.push(BC.FUNCTION, f.reverse());
+    }
+
+    else if(thists === '←'){
       parse_index ++;
       if(parse_index >= ts.length) return [false, 'expected name after ←'];
       if(typeof(ts[parse_index]) !== 'string') return [false, 'expected name after ←'];
       bcr.push(BC.ASSIGN, ts[parse_index]);
     }
 
-    else if(thists.length && thists[0] == "'"){
-      bcr.push(BC.CONST, thists.length == 2 ? thists.slice(1) : array([thists.length - 1], [...thists.slice(1)]));
+    else if(thists.length && thists[0] === "'"){
+      bcr.push(BC.CONST, thists.length === 2 ? thists.slice(1) : array([thists.length - 1], [...thists.slice(1)]));
     }
 
-    else if(thists == '⍬') {
+    else if(thists === '⍬') {
       bcr.push(BC.CONST, array([0], []));
     }
 
-    else if(typeof(thists) == 'string' && functions.includes(thists)) {
+    else if(typeof(thists) === 'string' && functions.includes(thists)) {
       const r = {
         "+": BC.ADD,
         "-": BC.SUB,
@@ -354,46 +385,19 @@ function parse(ts){
          return [false, "internalerror on '" + thists + "'"]; 
       } 
       bcr.push(r);
-
-      if(r === BC.ARRCLOSE) { last_was_cpr = true; parse_index ++; continue; }
-    } else if(typeof(thists) == 'string' && modifiers.includes(thists)) {
-      if(last_was_cpr){
-        bcr.pop();
-        let parens = [];
-        for(let i = 0; i < bcr.length; i ++){
-          if(bcr[i] == BC.CONST) { i ++; continue; }
-          if(bcr[i] == BC.ARROPEN) parens.push([')', i]);
-          if(bcr[i] == BC.ARRCLOSE) parens.push(['(', i]);
-        }
-        let height = 1;
-        let res;
-        for(let i = parens.length - 1; i >= 0; i --){
-          if(parens[i][0] == ')') height --;
-          else height ++;
-
-          if(height == 0) {
-            res = parens[i][1];
-            break;
-          }
-        }
-        bcr.splice(res, 1);
-        let fs = [];
-        for(let i = 0, n = bcr.length - res; i < n; i ++){
-          fs.push(bcr.pop());
-        }
-        bcr.push(BC.FUNCTION, fs.reverse());
-      }
-
+    } else if(typeof(thists) === 'string' && modifiers.includes(thists)) {
       const r = {
         "/": BC.FOLD,
         "\\": BC.SCAN,
-        "⍩": BC.DIP
+        "⍩": BC.DIP,
+        "⍣": BC.REPEAT,
+        "⍤": BC.UNTIL
       }[thists];
       if(r === undefined){
          return [false, "internalerror on '" + thists + "'"]; 
       } 
-      bcr.splice(bcr.length - 1 - +last_was_cpr, 0, r);
-    } else if(typeof(thists) == 'string'){
+      bcr.push(r);
+    } else if(typeof(thists) === 'string'){
       // id
       bcr.push(BC.NAME, thists);
     }
@@ -401,7 +405,6 @@ function parse(ts){
     else return [false, "parse error on '" + thists + "'"];
 
     parse_index ++;
-    last_was_cpr = false;
   }
 
   return bcr;
@@ -459,7 +462,7 @@ function matrix_invert(M){
         msum.push(X[i * n + j] + I[i * n + j] * c);
       }
     }
-    if(iter == n - 1) inverse = msum;
+    if(iter === n - 1) inverse = msum;
     return [cp.concat(c), msum];
   }
   const cp = LV(n)[0];
@@ -475,7 +478,7 @@ function matrix_invert(M){
 }
 
 function is_atomic(v){
-  return typeof(v) == 'number' || typeof(v) == 'string';
+  return typeof(v) === 'number' || typeof(v) === 'string';
 }
 
 function is_match(a, b){
@@ -565,7 +568,7 @@ let stack = [];
 let array_stack = [];
 
 const dyadic_ariths = [BC.ADD, BC.SUB, BC.MUL, BC.DIV, BC.EXP, BC.LOG, BC.MAX, BC.MIN, BC.MOD, BC.EQUAL, BC.NEQUAL, BC.LESS, BC.GREATER, BC.LESSEQ, BC.GREATEREQ];
-const darith_to_fname = ["+", "-", "×", "÷", "*", "⍟", "↑", "↓", "%", "=", "≠"];
+const darith_to_fname = ["+", "-", "×", "÷", "*", "⍟", "↑", "↓", "%", "=", "≠", "<", ">", "≤", "≥"];
 const darith_fns = [(a,b)=>a+b, (a,b)=>a-b, (a,b)=>a*b, (a,b)=>a/b, Math.pow, (a,b)=>Math.log(a) / Math.log(b), Math.max, Math.min, (a,b)=>((a % b) + b) % b, (a,b)=>+(a === b), (a,b)=>+(a !== b), (a,b)=>+(a<b), (a,b)=>+(a>b), (a,b)=>+(a<=b), (a,b)=>+(a>=b)];
 function dyadic_arith(f){
   const i = dyadic_ariths.indexOf(f);
@@ -664,7 +667,10 @@ function apply_f(f){
     case BC.DISTANCE: {
       const a = stack.pop();
       const b = stack.pop();
-      if(is_atomic(a) && is_atomic(b)) return Math.abs(a - b);
+      if(is_atomic(a) && is_atomic(b)) {
+        stack.push(Math.abs(a - b));
+        break;
+      }
       if(typeof(a) != typeof(b)) return [false, '|: Rank error'];
 
       if(a.ravel.length != b.ravel.length) return [false, '|: Length error'];
@@ -988,34 +994,41 @@ function vm(bc){
       pc ++;
     }
 
-    while(pc < bc.length && [BC.FOLD, BC.SCAN, BC.DIP].includes(bc[pc])){
+    while(pc < bc.length && [BC.FOLD, BC.SCAN, BC.DIP, BC.REPEAT, BC.UNTIL].includes(bc[pc])){
       modifier_stack.push(bc[pc++]);
     }
 
     if(pc >= bc.length) continue;
 
-    if(bc[pc] == BC.ASSIGN){
+    if(bc[pc] === BC.ASSIGN){
       if(modifier_stack.length) return [false, "bytecode error: modifiers for ←"];
       env[bc[++pc]] = stack.pop();
       pc ++;
       continue;
     }
 
-    if(modifier_stack.length == 0) {
-      const r = apply_f(bc[pc]);
-      if(r) return r;
+    if(modifier_stack.length === 0) {
+      if(bc[pc] === BC.FUNCTION) {
+        const r = vm(bc[++pc]);
+        if(r.length && r[0] === false) return r;
+      } else {
+        const r = apply_f(bc[pc]);
+        if(r) return r;
+      }
     } else {
       let to_f;
       if(bc[pc] === BC.FUNCTION){
         pc++;
+        const func = bc[pc];
         to_f = () => {
-          const r = vm(bc[pc]);
+          const r = vm(func);
           if(r.length && r[0] === false) return r;
         };
       }
       else {
+        const func = bc[pc];
         to_f = () => {
-          const r = apply_f(bc[pc]);
+          const r = apply_f(func);
           if(r) return r;
         };
       }
@@ -1029,15 +1042,15 @@ function vm(bc){
 
               const per = arr.ravel.length / arr.shape[0];
 
-              if(arr.shape[0] == 0) stack.push(array(arr.shape.slice(1), new Array(arr.shape.slice(1).reduce((a,b)=>a*b, 1)).fill().map(_=>0)));
-              else if(arr.shape[0] == 1) stack.push(arr.shape.length == 1 ? arr.ravel[0] : array(arr.shape.slice(1), arr.ravel));
+              if(arr.shape[0] === 0) stack.push(array(arr.shape.slice(1), new Array(arr.shape.slice(1).reduce((a,b)=>a*b, 1)).fill().map(_=>0)));
+              else if(arr.shape[0] === 1) stack.push(arr.shape.length === 1 ? arr.ravel[0] : array(arr.shape.slice(1), arr.ravel));
 
               else {
                 const z = arr.ravel.slice(0, per);
-                stack.push(arr.shape.length == 1 ? z[0] : array(arr.shape.slice(1), z));
+                stack.push(arr.shape.length === 1 ? z[0] : array(arr.shape.slice(1), z));
                 for(let i = 1; i < arr.shape[0]; i ++){
                   const z = arr.ravel.slice(i * per, i * per + per);
-                  stack.push(arr.shape.length == 1 ? z[0] : array(arr.shape.slice(1), z));
+                  stack.push(arr.shape.length === 1 ? z[0] : array(arr.shape.slice(1), z));
 
                   const r = old_f();
                   if(r) return r;
@@ -1053,17 +1066,17 @@ function vm(bc){
 
               const per = arr.ravel.length / arr.shape[0];
 
-              if(arr.shape[0] == 0) stack.push(array([0, ...arr.shape.slice(1)], []));
-              else if(arr.shape[0] == 1) stack.push(array([1, ...arr.shape.slice(1)], arr.ravel));
+              if(arr.shape[0] === 0) stack.push(array([0, ...arr.shape.slice(1)], []));
+              else if(arr.shape[0] === 1) stack.push(array([1, ...arr.shape.slice(1)], arr.ravel));
 
               else {
                 let result = array(arr.shape, []);
                 const z = arr.ravel.slice(0, per);
-                stack.push(arr.shape.length == 1 ? z[0] : array(arr.shape.slice(1), z));
+                stack.push(arr.shape.length === 1 ? z[0] : array(arr.shape.slice(1), z));
                 result.ravel = result.ravel.concat(z);
                 for(let i = 1; i < arr.shape[0]; i ++){
                   const z = arr.ravel.slice(i * per, i * per + per);
-                  stack.push(arr.shape.length == 1 ? z[0] : array(arr.shape.slice(1), z));
+                  stack.push(arr.shape.length === 1 ? z[0] : array(arr.shape.slice(1), z));
 
                   const r = old_f();
                   if(r) return r;
@@ -1086,8 +1099,61 @@ function vm(bc){
             break;            
           }
 
+          case BC.REPEAT: {
+            to_f = () => {
+              const times = stack.pop();
+              const start = stack.pop();
+              stack.push(mpervade(a=>{
+                stack.push(start);
+                for(let i = 0; i < a; i ++){
+                  old_f();
+                }
+                return stack.pop();
+              }, times));
+            }
+            break;         
+          }
+
+          case BC.UNTIL: {
+            to_f = () => {
+              pc ++;
+              let second_f;
+              if(bc[pc] === BC.FUNCTION){
+                pc++;
+                const func = bc[pc];
+                second_f = () => {
+                  const r = vm(func);
+                  if(r.length && r[0] === false) return r;
+                };
+              }
+              else {
+                const func = bc[pc];
+                second_f = () => {
+                  const r = apply_f(func);
+                  if(r) return r;
+                };
+              }
+
+              let prev = false;
+              while(1){
+                second_f();
+                const new_prev = JSON.parse(JSON.stringify(stack[stack.length - 1]));
+                if(prev !== false) {
+                  const stack_copy = JSON.parse(JSON.stringify(stack));
+                  stack.push(prev);
+                  old_f();
+                  let result = stack.pop();
+                  stack = stack_copy;
+                  if(result === 1) break;
+                }
+                prev = new_prev;
+              }
+            }
+            break;
+          }
+
           default:
-            return [false, "bytecode error on '" + pm + "'"];
+            return [false, "bytecode error on '" + Object.keys(BC).find(k=>BC[k]===pm) + "'"];
         }
       }
 
@@ -1097,7 +1163,7 @@ function vm(bc){
     
     pc ++;
 
-    if(bc[pc] == BC.ASSIGN){
+    if(bc[pc] === BC.ASSIGN){
       env[bc[++pc]] = stack.pop();
       pc ++;
     }

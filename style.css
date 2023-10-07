@@ -176,8 +176,7 @@ html, body {
   border: none;
   font-size: 1.5em;
   text-align: center;
-  padding: 0px;
-  width: 0.75em;
+  padding: 1px;
   flex: 1 0 auto;
 }
 
