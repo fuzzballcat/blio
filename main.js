@@ -5,8 +5,8 @@ const text = document.getElementById("srcinput");
 
 const examples = [
   "'factorial of 5 is' 5 { ∇⍆s ¨2<?{∵1}{¨1-s×} }", 
-  "',oN s\\'ereht on gninaem ot eht .eman'¨' '=¨\\+2×⍨-⍒⊂⌽", 
-  "'questionably beatably deniably doubtedly'→s\ns' ',¨' '=2×1+⊆→r\n' un' r' '=/+⍴r¨' '≠⊆, r' '=⍋⍋⊂1¯&"
+  "' ,oN s\\'ereht on gninaem ot eht .eman'¨' '=\\+2×⍒⊂⌽", 
+  "'questionably beatably deniably doubtedly'→s\ns' ',¨' '=2×1+⊆→r\n' un' r' '=/+⍴r¨' '≠⊆, r' '=⍋⍋⊂¯1&"
 ];
 
 let example_index = Math.floor(Math.random() * examples.length);
@@ -33,11 +33,11 @@ text.addEventListener("keydown", e => {
   }
 }, false);
 
-const glyphs = "⍬ + ¯ - × ÷ ⌹ * ⍟ ↑ ↓ ~ | ⌈ ⌊ % < ≤ = ≥ > ≠ ≡ ≢ ⊃ ⊂ ⊆ ⍳ ⍸ ⍒ ⍋ ⌽ ⊖ & , # ! ⍴ ∘ ¨ ⍨ ∵ ⍩ ⍣ ⍤ / \\ ? → ⍆ () '' ∇ {}";
+const glyphs = "⍬ + ¯ - × ÷ ⌹ * ⍟ ↑ ↓ ~ | ⌈ ⌊ % < ≤ = ≥ > ≠ ≡ ≢ ⊃ ⊂ ⊆ ⍳ ⍸ ⍒ ⍋ ⌽ ⊖ & , # ! ⍴ ∘ ¨ ⍨ ∵ ⍩ ⍣ ⍤ / \\ ? → ⍆ () _ '' ∇ {}";
 const functions = "+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊃⊂⊆⍳⍸⍒⍋⌽⊖&,#!⍴∘¨⍨∵()∇";
 const modifiers = "⍩⍤⍣/\\?";
 const constants = "⍬1234567890.";
-const stackers = "∘¨⍨∵→⍆()∇{}";
+const stackers = "∘¨⍨∵→⍆()_∇{}";
 const info = {
   "⍬": "Zilde",
   "+": "Add\n2→1",
@@ -91,13 +91,14 @@ const info = {
 
   "→": "Assign",
   "⍆": "Function assign",
-  "()": "Stack to array\n?→1",
+  "()": "Array",
+  "_": "Stranding",
   "∇": "Recur",
   "{}": "Defined function", 
   "''": "String"
 }
 
-const hl_class = g => stackers.includes(g) ? 'hi_k' : functions.includes(g) ? 'hi_f' : modifiers.includes(g) ? 'hi_m' : g[0] === "'" ? 'hi_s' : constants.includes(g) ? 'hi_c' : g[0] === "\\" ? 'hi_e' : false;
+const hl_class = g => stackers.includes(g) ? 'hi_k' : functions.includes(g) ? 'hi_f' : modifiers.includes(g) ? 'hi_m' : g[0] === "'" ? 'hi_s' : constants.includes(g) ? 'hi_c' : g[0] === "\\" ? 'hi_e' : g[0] === "¯" ? 'hi_c' : false;
 
 function hl(s){
   const smap = {
@@ -113,7 +114,7 @@ function hl(s){
   s = s.split(/(?<=(?<!\\)(?:\\\\)*)\'/);
   s = s.map((v, i) => {
     if(i % 2 === 0){
-      return v.replace(new RegExp([...functions, ...modifiers, ...constants].map(f=>f.match(/[0-9]/)?f:"\\"+f).join("|"), "g"), f=>"<span class=\"" + hl_class(f) + "\">" + sanitize(f) +"</span>");
+      return v.replace(new RegExp("¯[0-9.]|" + [...functions, ...modifiers, ...constants].map(f=>f.match(/[0-9]/)?f:"\\"+f).join("|"), "g"), f=>"<span class=\"" + hl_class(f) + "\">" + sanitize(f) +"</span>");
     } else if(i !== s.length - 1) {
       return "<span class='hi_s'>'" + v.split(/(\\.)/g).map(c => c.length === 2 && c[0] === "\\" ? "<span class='hi_e'>" + sanitize(c) + "</span>" : c).join("") + "'</span>";
     } else {
@@ -196,10 +197,6 @@ function lex(v){
       tokens.push(str);
     }
 
-    else if(c === "\n" || glyphs.includes(c)){
-      tokens.push(c);
-    }
-
     else if(c.match(/[a-z]/i)){
       let str = "";
       while(c.match(/[a-z]/i)){
@@ -211,7 +208,10 @@ function lex(v){
       tokens.push(str);
     }
 
-    else if(c === "." || c.match(/[0-9]/)){
+    else if((c === "¯" && i < v.length - 1 && (v[i+1] === "." || v[i+1].match(/[0-9]/))) || c === "." || c.match(/[0-9]/)){
+      let times = 1;
+      if(c === "¯"){ times = -1; c = v[++i]; }
+
       let num = "";
       while(c.match(/[0-9]/)){
         num += c;
@@ -229,7 +229,11 @@ function lex(v){
       }
       i --;
 
-      tokens.push(parseFloat(num));
+      tokens.push(times * parseFloat(num));
+    }
+
+    else if(c === "\n" || glyphs.includes(c)){
+      tokens.push(c);
     }
 
     else return [false, 'Unknown token ' + c, i];
@@ -326,7 +330,16 @@ function parse(ts){
     const thists = ts[parse_index];
 
     if(typeof(thists) === 'number') {
-      bcr.push(BC.CONST, thists);
+      if(parse_index + 1 < ts.length && ts[parse_index + 1] === "_"){
+        let res = [thists];
+        while(parse_index + 1 < ts.length && ts[parse_index + 1] === "_"){
+          parse_index ++;
+          if(parse_index + 1 >= ts.length || typeof(ts[parse_index + 1]) !== 'number') return [false, "Expected number after stranding."];
+          res.push(ts[++parse_index]);
+        }
+        bcr.push(BC.CONST, array([res.length], res));
+      }
+      else bcr.push(BC.CONST, thists);
     }
 
     else if(thists === "{"){
@@ -694,10 +707,10 @@ function apply_f(f){
         const e = stack.pop();
         let shape;
         if(is_atomic(e)) {
-          res.ravel.push(e);
+          res.ravel.unshift(e);
           shape = [];
         } else {
-          res.ravel = res.ravel.concat(e.ravel);
+          res.ravel = e.ravel.concat(res.ravel);
           shape = e.shape;
         }
         if(trailing === false) trailing = shape;
