@@ -3,11 +3,11 @@ import './style.css'
 const bar = document.getElementById("languagebar");
 const text = document.getElementById("srcinput");
 
-const examples = [
+const examples = /*[
   "'factorial of 5 is'\n×/!5", 
   "⌽(⍒2×+\\' '=s)⊂s←' talF LPA .selur'", 
   "s←'questionably, beatably, deniably, doubtedly,'\n¯1&' un'⊥[' '=r]r←' ',s\n'the best language ever'"
-];
+];*/["3 {⍺⋄⍵*.5} 9"];//["{⍵*.5}⍤≡ 9"];
 
 let example_index = Math.floor(Math.random() * examples.length);
 
@@ -370,11 +370,19 @@ function parse_atom(ts){
 function parse_function_atom(ts){
   if(ts[0] === "{"){
     ts.shift();
+    const old_toks = JSON.parse(JSON.stringify(ts));
     const r = parse(ts);
     if(r.length && r[0] === false) return r;
-    if(ts.length <  1 || ts[0] !== "}") return [false, "Mismatched {"];
+    if(ts.length < 1 || ts[0] !== "}") return [false, "Mismatched {"];
     ts.shift();
-    return [BC.FUNCTION, r];
+
+    old_toks.splice(ts.length, old_toks.length - ts.length);
+    let has_a = false;
+    for(let t of old_toks){
+      if(t === "⍺") { has_a = true; break; }
+    }
+
+    return [BC.FUNCTION, r, has_a ? BC.POPD : BC.POPM];
   } else if(typeof(ts[0]) === 'string' && functions.includes(ts[0])) {
     const f = ts.shift();
     const r = {
@@ -478,7 +486,7 @@ function isLowerCase(str) {
 }
 
 function parse_expression(ts){
-  if(ts.length === 0) return [false, "Expected an expression."];
+  if(ts.length === 0 || terminators.includes(ts[0])) return [false, "Expected an expression."];
 
   let lhs = [];
   if(is_value(ts[0])){
@@ -505,27 +513,33 @@ function parse_expression(ts){
     if(f.length && f[0] === false) return f;
     let rhs = parse_expression(ts);
     if(rhs.length && rhs[0] === false) return rhs;
-    lhs = rhs.concat(lhs).concat(f).concat([lhs.length ? BC.POPD : BC.POPM]);
+    lhs = rhs.concat(lhs).concat(f);
   }
-
   return lhs;
 }
 
-function parse(ts){
+function parse(ts, toplevel){
   while(ts.length > 0 && "\n⋄".includes(ts[0])) ts.shift();
 
   let res = [];
-  for(let i = 0; i < 100 && ts.length > 0; i ++){
+  for(let i = 0; i < 100 && ts.length > 0 && ts[0] !== "}"; i ++){
     const r = parse_expression(ts);
     if(r.length && r[0] === false) return r;
     res = res.concat(r);
 
     while(ts.length > 0 && "\n⋄".includes(ts[0])) ts.shift();
 
-    if(r.length > 1 && r[r.length - 2] === BC.ASSIGN) res.push(BC.POP);
+    if((!toplevel && ts[0] !== "}") || (r.length > 1 && r[r.length - 2] === BC.ASSIGN)) res.push(BC.POP);
   }
 
   return res;
+}
+
+function parse_full(ts){
+  const expr = parse(ts, true);
+  if(expr.length > 0 && expr[0] === false) return expr;
+  if(ts.length > 0) return [false, "Mismatched }"];
+  return expr;
 }
 
 function matmul(m1, m2, n) {
@@ -1147,14 +1161,12 @@ function apply_f(f){
       break;
     }
     case BC.POPM: {
-      break;
       const tmp = stack.pop();
       stack.pop();
       stack.push(tmp);
       break;
     }
     case BC.POPD: {
-      break;
       const tmp = stack.pop();
       stack.pop();
       stack.pop();
@@ -1364,12 +1376,12 @@ function vm(bc){
             to_f = () => {
               let prev = false;
               while(1){
-                second_f();
+                old_f();
                 const new_prev = JSON.parse(JSON.stringify(stack[stack.length - 1]));
                 if(prev !== false) {
                   const stack_copy = JSON.parse(JSON.stringify(stack));
                   stack.push(prev);
-                  old_f();
+                  second_f();
                   let result = stack.pop();
                   stack = stack_copy;
                   if(result === 1) break;
@@ -1474,7 +1486,7 @@ function execSource(v){
     return string;
   }
 
-  const parsed = parse(tokens);
+  const parsed = parse_full(tokens);
 
   if(parsed.length && parsed[0] === false) {
     let rstring = '';
