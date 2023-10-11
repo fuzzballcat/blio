@@ -3,11 +3,11 @@ import './style.css'
 const bar = document.getElementById("languagebar");
 const text = document.getElementById("srcinput");
 
-const examples = [
+const examples = /*[
   "'factorial of 5 is'\n×/!5", 
   "⌽(⍒2×+\\' '=s)⊂s←' talF LPA .selur'", 
   "s←'questionably, beatably, deniably, doubtedly,'\n¯1&' un'⊥[' '=r]r←' ',s\n'the best language ever'"
-];
+];*/["1\n{⍵*.5}⍣[5] 9"];
 
 let example_index = Math.floor(Math.random() * examples.length);
 
@@ -33,9 +33,9 @@ text.addEventListener("keydown", e => {
   }
 }, false);
 
-const glyphs = "⍬ + ¯ - × ÷ ⌹ * ⍟ ↑ ↓ ~ | ⌈ ⌊ % < ≤ = ≥ > ≠ ≡ ≢ ⊃ ⊂ ⊆ ⊥ ⊤ ⍳ ⍸ ⍒ ⍋ ⌽ ⊖ & , # ! ⍴ ⍣ ⍤ / \\ ? ← ⍅ () '' ⍺ ⍵ ∇ {} [] ⋄";
+const glyphs = "⍬ + ¯ - × ÷ ⌹ * ⍟ ↑ ↓ ~ | ⌈ ⌊ % < ≤ = ≥ > ≠ ≡ ≢ ⊃ ⊂ ⊆ ⊥ ⊤ ⍳ ⍸ ⍒ ⍋ ⌽ ⊖ & , # ! ⍴ ⍣ / \\ ? ← ⍅ () '' ⍺ ⍵ ∇ {} [] ⋄";
 const functions = "+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊃⊂⊆⊥⊤⍳⍸⍒⍋⌽⊖&,#!⍴()∇";
-const modifiers = "⍤⍣/\\?";
+const modifiers = "⍣/\\?";
 const constants = "⍬1234567890.";
 const stackers = "←⍅()∇{}[]";
 const info = {
@@ -82,8 +82,7 @@ const info = {
 
   "/": "Fold\n1F",
   "\\": "Scan\n1F",
-  "⍣": "Repeat\n1F1",
-  "⍤": "Until\n2F",
+  "⍣": "Repeat/Until\n1F[1]/2F",
   "?": "If\n2F1",
 
   "←": "Assign",
@@ -458,14 +457,22 @@ function parse_function(ts){
     const r = {
       "/": BC.FOLD,
       "\\": BC.SCAN,
-      "⍣": BC.REPEAT,
-      "⍤": BC.UNTIL,
+      "⍣": BC.UNTIL,
       "?": BC.IF
     }[m];
     if(r === undefined){
        return [false, "internalerror on '" + m + "'"]; 
     } 
     res = [r].concat(res);
+    if(r === BC.UNTIL && ts.length && ts[0] === "["){
+      ts.shift();
+      res[0] = BC.REPEAT;
+      res = parse_expression(ts).concat(res);
+      if(ts.length < 1 || ts[0] !== "]") return [false, "Expected closing ]"];
+      ts.shift();
+      continue;
+    }
+    
     if(r === BC.IF || r === BC.UNTIL){
       let extra = parse_function_atom(ts);
       if(extra.length && extra[0] === false) return extra;
@@ -1190,15 +1197,12 @@ function apply_f(f){
 }
 
 let env = {};
-function vm(bc){
+function vm(bc, alpha, omega){
   const env_cpy = JSON.parse(JSON.stringify(env));
 
   //printBC(bc);
-  if(stack.length > 0) env["⍵"] = JSON.parse(JSON.stringify(stack[stack.length - 1]));
-  if(stack.length > 1) {
-    env["⍺"] = env["⍵"];
-    env["⍵"] = JSON.parse(JSON.stringify(stack[stack.length - 2]));
-  }
+  env["⍵"] = omega === undefined ? omega : JSON.parse(JSON.stringify(omega));
+  env["⍺"] = alpha === undefined ? alpha : JSON.parse(JSON.stringify(alpha));
 
   let pc = 0;
   while(pc < bc.length){
@@ -1220,7 +1224,7 @@ function vm(bc){
       if(bc[pc] === BC.NAME) {
         const res = JSON.parse(JSON.stringify(env[bc[++pc]]));
         if(Array.isArray(res)) {
-          const r = vm(res);
+          const r = vm(res); // todo: dyadic/monadic
           if(r.length && r[0] === false) return r;
         }
         else stack.push(res);
@@ -1246,11 +1250,17 @@ function vm(bc){
     if(modifier_stack.length === 0) {
       if(bc[pc] === BC.MFUNCTION || bc[pc] === BC.DFUNCTION) {
         const dy = bc[pc] === BC.DFUNCTION;
-        const r = vm(bc[++pc]);
+        let alpha, omega;
+        if(dy){
+          alpha = stack.pop();
+          omega = stack.pop();
+        } else {
+          omega = stack.pop();
+        }
+        const r = vm(bc[++pc], alpha, omega);
         if(r.length && r[0] === false) return r;
-        apply_f(dy ? BC.POPD : BC.POPM);
       } else if(bc[pc] === BC.RECUR){
-        const r = vm(bc);
+        const r = vm(bc); // todo: dyadic/monadic
         if(r.length && r[0] === false) return r;
       } else {
         const r = apply_f(bc[pc]);
@@ -1263,14 +1273,20 @@ function vm(bc){
         pc++;
         const func = bc[pc];
         to_f = () => {
-          const r = vm(func);
+          let alpha, omega;
+          if(dy){
+            alpha = stack.pop();
+            omega = stack.pop();
+          } else {
+            omega = stack.pop();
+          }
+          const r = vm(func, alpha, omega);
           if(r.length && r[0] === false) return r;
-          apply_f(dy ? BC.POPD : BC.POPM);
         };
       }
       else if(bc[pc] === BC.RECUR){
         to_f = () => {
-          const r = vm(bc);
+          const r = vm(bc); // todo: dyadic/monadic
           if(r.length && r[0] === false) return r;
         }
       }
@@ -1292,14 +1308,20 @@ function vm(bc){
             pc++;
             const func = bc[pc];
             second_f = () => {
-              const r = vm(func);
+              let alpha, omega;
+              if(dy){
+                alpha = stack.pop();
+                omega = stack.pop();
+              } else {
+                omega = stack.pop();
+              }
+              const r = vm(func, alpha, omega);
               if(r.length && r[0] === false) return r;
-              apply_f(dy ? BC.POPD : BC.POPM);
             };
           }
           else if(bc[pc] === BC.RECUR){
             second_f = () => {
-              const r = vm(bc);
+              const r = vm(bc); // todo: dyadic/monadic
               if(r.length && r[0] === false) return r;
             }
           }
