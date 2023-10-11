@@ -4,9 +4,9 @@ const bar = document.getElementById("languagebar");
 const text = document.getElementById("srcinput");
 
 const examples = [
-  "'factorial of 5 is' 5 { ∇⍆s ¨2<?{∵1}{¨1-s×} }", 
-  "' ,oN s\\'ereht on gninaem ot eht .eman'¨' '=\\+2×⍒⊂⌽", 
-  "'questionably beatably deniably doubtedly'→s\ns' ',¨' '=2×1+⊆→r\n' un' r' '=/+⍴r¨' '≠⊆, r' '=⍋⍋⊂¯1&"
+  "'factorial of 5 is'\n×/!5", 
+  "⌽(⍒2×+\\' '=s)⊂s←' talF LPA .selur'", 
+  "s←'questionably, beatably, deniably, doubtedly,'\n¯1&' un'⊥[' '=r]r←s,' '\n'the best language ever'"
 ];
 
 let example_index = Math.floor(Math.random() * examples.length);
@@ -33,11 +33,11 @@ text.addEventListener("keydown", e => {
   }
 }, false);
 
-const glyphs = "⍬ + ¯ - × ÷ ⌹ * ⍟ ↑ ↓ ~ | ⌈ ⌊ % < ≤ = ≥ > ≠ ≡ ≢ ⊃ ⊂ ⊆ ⍳ ⍸ ⍒ ⍋ ⌽ ⊖ & , # ! ⍴ ∘ ¨ ⍨ ∵ ⍩ ⍣ ⍤ / \\ ? → ⍆ () _ '' ∇ {}";
-const functions = "+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊃⊂⊆⍳⍸⍒⍋⌽⊖&,#!⍴∘¨⍨∵()∇";
-const modifiers = "⍩⍤⍣/\\?";
+const glyphs = "⍬ + ¯ - × ÷ ⌹ * ⍟ ↑ ↓ ~ | ⌈ ⌊ % < ≤ = ≥ > ≠ ≡ ≢ ⊃ ⊂ ⊆ ⊥ ⊤ ⍳ ⍸ ⍒ ⍋ ⌽ ⊖ & , # ! ⍴ ⍣ ⍤ / \\ ? ← ⍅ () _ '' ⍺ ⍵ ∇ {} [] ⋄";
+const functions = "+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊃⊂⊆⊥⊤⍳⍸⍒⍋⌽⊖&,#!⍴()∇";
+const modifiers = "⍤⍣/\\?";
 const constants = "⍬1234567890.";
-const stackers = "∘¨⍨∵→⍆()_∇{}";
+const stackers = "←⍅()_∇{}[]";
 const info = {
   "⍬": "Zilde",
   "+": "Add\n2→1",
@@ -66,6 +66,8 @@ const info = {
   "⊃": "Replicate\n1→1",
   "⊂": "Index\n2→1",
   "⊆": "Keep\n2→1",
+  "⊥": "Splice\n3→1",
+  "⊤": "Pick\n3→1",
   "⊖": "Rotate\n2→1",
   "⌽": "Reverse\n1→1",
   ",": "Catenate\n2→1",
@@ -77,25 +79,24 @@ const info = {
   "⍴": "Reshape\n2→1",
   "⍋": "Grade up\n1→1",
   "⍒": "Grade down\n1→1",
-  "∘": "Noop\n1→1",
-  "¨": "Dup\n1→2",
-  "⍨": "Swap\n2→2",
-  "∵": "Pop\n1→0",
 
-  "⍩": "Dip\n1F",
   "/": "Fold\n1F",
   "\\": "Scan\n1F",
   "⍣": "Repeat\n1F1",
   "⍤": "Until\n2F",
   "?": "If\n2F1",
 
-  "→": "Assign",
-  "⍆": "Function assign",
+  "←": "Assign",
+  "⍅": "Function assign",
   "()": "Array",
   "_": "Stranding",
+  "⍺": "Left argument",
+  "⍵": "Right argument",
   "∇": "Recur",
   "{}": "Defined function", 
-  "''": "String"
+  "[]": "Axis-index",
+  "''": "String",
+  "⋄": "Statement separator"
 }
 
 const hl_class = g => stackers.includes(g) ? 'hi_k' : functions.includes(g) ? 'hi_f' : modifiers.includes(g) ? 'hi_m' : g[0] === "'" ? 'hi_s' : constants.includes(g) ? 'hi_c' : g[0] === "\\" ? 'hi_e' : g[0] === "¯" ? 'hi_c' : false;
@@ -111,14 +112,13 @@ function hl(s){
   };
   const sanitize = s=>s.replace(/[&<>"'/]/ig, match=>smap[match]);
 
-  s = s.split(/(?<=(?<!\\)(?:\\\\)*)\'/);
-  s = s.map((v, i) => {
-    if(i % 2 === 0){
+  s = s.split(/('(?:[^'\\]|\\.)*')/);
+
+  s = s.map(v => {
+    if(v[0] !== "'"){
       return v.replace(new RegExp("¯[0-9.]|" + [...functions, ...modifiers, ...constants].map(f=>f.match(/[0-9]/)?f:"\\"+f).join("|"), "g"), f=>"<span class=\"" + hl_class(f) + "\">" + sanitize(f) +"</span>");
-    } else if(i !== s.length - 1) {
-      return "<span class='hi_s'>'" + v.split(/(\\.)/g).map(c => c.length === 2 && c[0] === "\\" ? "<span class='hi_e'>" + sanitize(c) + "</span>" : c).join("") + "'</span>";
     } else {
-      return "<span class='hi_s'>'" + sanitize(v) + "</span>";
+      return "<span class='hi_s'>" + v.split(/(\\.)/g).map(c => c.length === 2 && c[0] === "\\" ? "<span class='hi_e'>" + sanitize(c) + "</span>" : c).join("") + "</span>";
     }
   }).join("");
 
@@ -289,18 +289,21 @@ const BC = [
   "RESHAPE",
   "GRADEUP",
   "GRADEDOWN",
-  "DUP",
-  "SWAP",
-  "POP",
+  "SPLICE",
+  "PICK",
 
   "RECUR",
-  "NOOP",
-  "DIP",
   "REPEAT",
   "UNTIL",
   "FOLD",
   "SCAN",
-  "IF"
+  "IF",
+
+  "OMEGA",
+  "ALPHA",
+  "POP",
+  "POPD",
+  "POPM"
 ].map((k,i)=>({[k]:i+1})).reduce((a,b)=>({...a,...b}));
 
 function formatBC(bc){
@@ -322,154 +325,203 @@ function array(sh, v){
   return {shape: sh, ravel: v};
 }
 
-function parse(ts){
-  let parse_index = 0;
-  const bcr = [];
-
-  while(parse_index < ts.length){    
-    const thists = ts[parse_index];
-
-    if(typeof(thists) === 'number') {
-      if(parse_index + 1 < ts.length && ts[parse_index + 1] === "_"){
-        let res = [thists];
-        while(parse_index + 1 < ts.length && ts[parse_index + 1] === "_"){
-          parse_index ++;
-          if(parse_index + 1 >= ts.length || typeof(ts[parse_index + 1]) !== 'number') return [false, "Expected number after stranding."];
-          res.push(ts[++parse_index]);
-        }
-        bcr.push(BC.CONST, array([res.length], res));
+function parse_atom(ts){
+  if(typeof(ts[0]) === 'number') {
+    if(ts.length > 1 && ts[1] === "_"){
+      let res = [ts.shift()];
+      while(ts.length > 0 && ts[0] === "_"){
+        ts.shift();
+        if(ts.length < 1 || typeof(ts[0]) !== 'number') return [false, "Expected number after stranding."];
+        res.push(ts.shift());
       }
-      else bcr.push(BC.CONST, thists);
+      return [BC.CONST, array([res.length], res)];
     }
-
-    else if(thists === "{"){
-      bcr.push(BC.FOPEN);
-    }
-
-    else if(thists === "}"){
-      let f = [];
-      while(1){
-        if(bcr.length === 0) return [false, 'Mismatched }'];
-        const a = bcr.pop();
-        if(a === BC.FOPEN) { 
-          let constcount = 0;
-          while(bcr.length > 0 && constcount < bcr.length && bcr[bcr.length - 1 - constcount] === BC.CONST){
-            constcount ++;
-          }
-
-          if(constcount % 2 === 0) break;
-        }
-        f.push(a);
-      }
-      bcr.push(BC.FUNCTION, f.reverse());
-    }
-
-    else if(thists === '→'){
-      parse_index ++;
-      if(parse_index >= ts.length) return [false, 'expected name after →'];
-      if(typeof(ts[parse_index]) !== 'string') return [false, 'expected name after →'];
-      bcr.push(BC.ASSIGN, ts[parse_index]);
-    }
-
-    else if(thists === '⍆'){
-      parse_index ++;
-      if(parse_index >= ts.length) return [false, 'expected name after →'];
-      if(typeof(ts[parse_index]) !== 'string') return [false, 'expected name after →'];
-      
-      let f = bcr.pop();
-      if(Array.isArray(f)) bcr.pop();
-      bcr.push(BC.ASSIGNFN, ts[parse_index], [BC.FUNCTION, f]);
-    }
-
-    else if(thists.length && thists[0] === "'"){
-      bcr.push(BC.CONST, thists.length === 2 ? thists.slice(1) : array([thists.length - 1], [...thists.slice(1)]));
-    }
-
-    else if(thists === '⍬') {
-      bcr.push(BC.CONST, array([0], []));
-    }
-
-    else if(typeof(thists) === 'string' && functions.includes(thists)) {
-      const r = {
-        "+": BC.ADD,
-        "-": BC.SUB,
-        "×": BC.MUL,
-        "÷": BC.DIV,
-        "*": BC.EXP,
-        "⍟": BC.LOG,
-        "⌹": BC.MATINV,
-        "¯": BC.NEGATE,
-        "↑": BC.MAX,
-        "↓": BC.MIN,
-        "~": BC.NOT,
-        "|": BC.DISTANCE,
-        "⌈": BC.CEILING,
-        "⌊": BC.FLOOR,
-        "%": BC.MOD,
-        "=": BC.EQUAL,
-        "≠": BC.NEQUAL,
-        "<": BC.LESS,
-        ">": BC.GREATER,
-        "≤": BC.LESSEQ,
-        "≥": BC.GREATEREQ,
-        "≡": BC.MATCH,
-        "≢": BC.NMATCH,
-        "⊃": BC.REPLICATE,
-        "⊂": BC.INDEX,
-        "⊆": BC.KEEP,
-        "⌽": BC.REVERSE,
-        "⊖": BC.ROTATE,
-        ",": BC.CATENATE,
-        "#": BC.SHAPEOF,
-        "!": BC.INDICES,
-        "⍳": BC.INDICESOF,
-        "⍸": BC.FINDSEQ,
-        "&": BC.TAKEDROP,
-        "⍴": BC.RESHAPE,
-        "⍋": BC.GRADEUP,
-        "⍒": BC.GRADEDOWN,
-
-        "(": BC.ARROPEN,
-        ")": BC.ARRCLOSE,
-
-        "∇": BC.RECUR,
-
-        "∘": BC.NOOP,
-        "¨": BC.DUP,
-        "⍨": BC.SWAP,
-        "∵": BC.POP
-      }[thists];
-      if(r === undefined){
-         return [false, "internalerror on '" + thists + "'"]; 
-      } 
-      bcr.push(r);
-    } else if(typeof(thists) === 'string' && modifiers.includes(thists)) {
-      const r = {
-        "/": BC.FOLD,
-        "\\": BC.SCAN,
-        "⍩": BC.DIP,
-        "⍣": BC.REPEAT,
-        "⍤": BC.UNTIL,
-        "?": BC.IF
-      }[thists];
-      if(r === undefined){
-         return [false, "internalerror on '" + thists + "'"]; 
-      } 
-      bcr.push(r);
-    } else if(typeof(thists) === 'string'){
-      // id
-      bcr.push(BC.NAME, thists);
-    }
-
-    else return [false, "parse error on '" + thists + "'"];
-
-    parse_index ++;
+    else return [BC.CONST, ts.shift()];
+  } else if(ts[0] === '⍬') {
+    ts.shift();
+    return [BC.CONST, array([0], [])];
+  } else if(ts[0] === '⍵'){
+    ts.shift();
+    return [BC.OMEGA];
+  } else if(ts[0] === '⍺'){
+    ts.shift();
+    return [BC.ALPHA];
+  } else if(ts[0].length && ts[0][0] === "'"){
+    const t = ts.shift();
+    return [BC.CONST, t.length === 2 ? t.slice(1) : array([t.length - 1], [...t.slice(1)])];
+  } else if(typeof(ts[0]) === 'string' && !glyphs.includes(ts[0])){
+    return [BC.NAME, ts.shift()];
+  } else if(ts[0] === "("){
+    ts.shift();
+    let res = parse_expression(ts);
+    if(ts.length < 1 || ts[0] !== ")") return [false, "Expected closing )"];
+    ts.shift();
+    return res;
+  } else {
+    return [false, 'Syntax error: expected expression'];
   }
-
-  return bcr;
 }
 
-// TODO: Flat array
+function parse_function_atom(ts){
+  if(ts[0] === "{"){
+    ts.shift();
+    const r = parse(ts);
+    if(r.length && r[0] === false) return r;
+    if(ts.length <  1 || ts[0] !== "}") return [false, "Mismatched {"];
+    ts.shift();
+    return [BC.FUNCTION, r];
+  } else if(typeof(ts[0]) === 'string' && functions.includes(ts[0])) {
+    const f = ts.shift();
+    const r = {
+      "+": BC.ADD,
+      "-": BC.SUB,
+      "×": BC.MUL,
+      "÷": BC.DIV,
+      "*": BC.EXP,
+      "⍟": BC.LOG,
+      "⌹": BC.MATINV,
+      "¯": BC.NEGATE,
+      "↑": BC.MAX,
+      "↓": BC.MIN,
+      "~": BC.NOT,
+      "|": BC.DISTANCE,
+      "⌈": BC.CEILING,
+      "⌊": BC.FLOOR,
+      "%": BC.MOD,
+      "=": BC.EQUAL,
+      "≠": BC.NEQUAL,
+      "<": BC.LESS,
+      ">": BC.GREATER,
+      "≤": BC.LESSEQ,
+      "≥": BC.GREATEREQ,
+      "≡": BC.MATCH,
+      "≢": BC.NMATCH,
+      "⊃": BC.REPLICATE,
+      "⊂": BC.INDEX,
+      "⊆": BC.KEEP,
+      "⊥": BC.SPLICE,
+      "⊤": BC.PICK,
+      "⌽": BC.REVERSE,
+      "⊖": BC.ROTATE,
+      ",": BC.CATENATE,
+      "#": BC.SHAPEOF,
+      "!": BC.INDICES,
+      "⍳": BC.INDICESOF,
+      "⍸": BC.FINDSEQ,
+      "&": BC.TAKEDROP,
+      "⍴": BC.RESHAPE,
+      "⍋": BC.GRADEUP,
+      "⍒": BC.GRADEDOWN,
+
+      "(": BC.ARROPEN,
+      ")": BC.ARRCLOSE,
+
+      "∇": BC.RECUR
+    }[f];
+    if(r === undefined){
+       return [false, "internalerror on '" + f + "'"]; 
+    } 
+    return [r];
+  } else if(typeof(ts[0]) === 'string' && !glyphs.includes(ts[0])){
+    return [BC.NAME, ts.shift()];
+  } else {
+    return [false, "Syntax error: expected a function"];
+  }
+}
+
+// todo: dyadic modifier
+function parse_function(ts){
+  let res = parse_function_atom(ts);
+  if(res.length && res[0] === false) return res;
+  while(typeof(ts[0]) === 'string' && (modifiers.includes(ts[0]) || ts[0] === "[")) {
+    const m = ts.shift();
+    if(m === "["){
+      res = parse_expression(ts).concat(res);
+      if(ts.length < 1 || ts[0] !== "]") return [false, "Expected closing ]"];
+      ts.shift();
+      continue;
+    }
+    const r = {
+      "/": BC.FOLD,
+      "\\": BC.SCAN,
+      "⍣": BC.REPEAT,
+      "⍤": BC.UNTIL,
+      "?": BC.IF
+    }[m];
+    if(r === undefined){
+       return [false, "internalerror on '" + m + "'"]; 
+    } 
+    res = [r].concat(res);
+    if(r === BC.IF || r === BC.UNTIL){
+      let extra = parse_function_atom(ts);
+      if(extra.length && extra[0] === false) return extra;
+      res = res.concat(extra);
+    }
+  }
+  return res;
+}
+
+const terminators = ")]}\n⋄";
+
+function is_value(t){
+  return t === "(" || t === "⍵" || t === "⍺" || (typeof(t) === 'string' && !glyphs.includes(t) && isLowerCase(t[0])) || typeof(t) === 'number' || t === '⍬' || (t.length && t[0] === "'");
+}
+
+function isLowerCase(str) {
+    return str === str.toLowerCase() &&
+           str !== str.toUpperCase();
+}
+
+function parse_expression(ts){
+  if(ts.length === 0) return [false, "Expected an expression."];
+
+  let lhs = [];
+  if(is_value(ts[0])){
+    lhs = parse_atom(ts);
+    if(lhs.length && lhs[0] === false) return lhs;
+  }
+
+  if(ts.length > 0 && !terminators.includes(ts[0])){
+    if(ts[0] === "←") {
+      if(lhs.length < 2 || lhs[0] != BC.NAME) return [false, "Expected a name to assign to"];
+      ts.shift();
+      let rhs = parse_expression(ts);
+      if(rhs.length && rhs[0] === false) return rhs;
+      return rhs.concat([BC.ASSIGN, lhs[1]])
+    } else if(ts[0] === "⍅"){
+      if(lhs.length < 2 || lhs[0] != BC.NAME) return [false, "Expected a name to assign to"];
+      ts.shift();
+      let rhs = parse_function(ts);
+      if(rhs.length && rhs[0] === false) return rhs;
+      return [BC.ASSIGNFN, lhs[1][0].toUpperCase() + lhs[1].slice(1), [BC.FUNCTION, rhs[0] === BC.FUNCTION ? rhs : rhs[0]]];
+    }
+
+    let f = parse_function(ts);
+    if(f.length && f[0] === false) return f;
+    let rhs = parse_expression(ts);
+    if(rhs.length && rhs[0] === false) return rhs;
+    lhs = rhs.concat(lhs).concat(f).concat([lhs.length ? BC.POPD : BC.POPM]);
+  }
+
+  return lhs;
+}
+
+function parse(ts){
+  while(ts.length > 0 && "\n⋄".includes(ts[0])) ts.shift();
+
+  let res = [];
+  for(let i = 0; i < 100 && ts.length > 0; i ++){
+    const r = parse_expression(ts);
+    if(r.length && r[0] === false) return r;
+    res = res.concat(r);
+
+    while(ts.length > 0 && "\n⋄".includes(ts[0])) ts.shift();
+
+    if(r.length > 1 && r[r.length - 2] === BC.ASSIGN) res.push(BC.POP);
+  }
+
+  return res;
+}
 
 function matmul(m1, m2, n) {
   let res = [];
@@ -636,7 +688,7 @@ function dyadic_arith(f){
   let l = stack.length - 1;
   if(l < 0) return [false, darith_to_fname[i] + ': Expected another value'];
 
-  let r = pervade(darith_fns[i],stack[l],a);
+  let r = pervade(darith_fns[i],a,stack[l]);
   if(r === undefined)  return [false, darith_to_fname[i] + ': Shape mismatch'];
   stack[l] = r;
 }
@@ -792,6 +844,57 @@ function apply_f(f){
       stack.push(array([result.length], result));
       break;
     }
+    case BC.SPLICE: {
+      const indices = stack.pop();
+      const sploke = stack.pop();
+      const arr = stack.pop();
+
+      if(arr.shape.length != sploke.shape.length) return [false, '⊥: Rank mismatch'];
+      for(let i = 1; i < arr.shape.length; i ++){
+        if(arr.shape[i] != sploke.shape[i]) return [false, '⊥: Shape mismatch'];
+      }
+
+      if(indices.shape[0] != arr.shape[0]) return [false, '⊥: Length mismatch'];
+
+      let per = arr.shape.slice(1).reduce((a,b)=>a*b, 1);
+
+      let result = array([0, ...arr.shape.slice(1)], []);
+      for(let i = 0; i < indices.ravel.length; i ++){
+        if(indices.ravel[i]) {
+          result.ravel = result.ravel.concat(sploke.ravel);
+          result.shape[0] += sploke.shape[0];
+        }
+        else {
+          result.ravel = result.ravel.concat(arr.ravel.slice(i * per, i * per + per));
+          result.shape[0] ++;
+        }
+      }
+
+      stack.push(result);
+      break;
+    }
+    case BC.PICK: {
+      const indices = stack.pop();
+      const a = stack.pop();
+      const b = stack.pop();
+      if(a.shape.length != b.shape.length) return [false, '⊤: Rank mismatch'];
+      for(let i = 0; i < a.shape.length; i ++){
+        if(a.shape[i] != b.shape[i]) return [false, '⊤: Shape mismatch'];
+      }
+      if(indices.shape[0] != a.shape[0]) return [false, '⊤: Length mismatch'];
+
+      let per = a.shape.slice(1).reduce((a,b)=>a*b, 1);
+
+      let result = array(a.shape, []);
+      for(let i = 0; i < indices.ravel.length; i ++){
+        if(indices.ravel[i]) result.ravel = result.ravel.concat(a.ravel.slice(i * per, i * per + per));
+        else result.ravel = result.ravel.concat(b.ravel.slice(i * per, i * per + per));
+      }
+
+      stack.push(result);
+      break;
+    }
+
     case BC.KEEP: {
       let indices = stack.pop();
       const arr = stack.pop();
@@ -852,8 +955,8 @@ function apply_f(f){
     case BC.CATENATE: {
       let a = stack.pop();
       let l = stack.length-1;
-      if(is_atomic(a)) a = array([1], [a]);
-      if(is_atomic(stack[l])) stack[l] = array([1], stack[l]);
+      if(is_atomic(a)) a = array([1], [...a]);
+      if(is_atomic(stack[l])) stack[l] = array([1], [...stack[l]]);
 
       if(stack[l].shape.length === a.shape.length) {
         for(let i = 1; i < stack[l].shape.length; i ++){
@@ -873,7 +976,7 @@ function apply_f(f){
         stack[l].shape[0] ++;
       } else return [false, ",: Shape mismatch"];
 
-      stack[l].ravel = a.ravel.concat(stack[l].ravel);
+      stack[l].ravel = stack[l].ravel.concat(a.ravel);
       break; 
     }
     case BC.SHAPEOF: {
@@ -1018,23 +1121,33 @@ function apply_f(f){
       stack.push(array(a_full.shape, a.map(a=>a[1]+1)));
       break;
     }
-    case BC.DUP: {
-      stack.push(JSON.parse(JSON.stringify(stack[stack.length - 1])));
-      break;
-    }
-    case BC.SWAP: {
-      const a = stack.pop();
-      const b = stack.pop();
-      stack.push(a);
-      stack.push(b);
-      break;
-    }
     case BC.POP: {
-      stack.pop();
+      while(stack.length) stack.pop();
       break;
     }
-    case BC.NOOP:
+    case BC.POPM: {
       break;
+      const tmp = stack.pop();
+      stack.pop();
+      stack.push(tmp);
+      break;
+    }
+    case BC.POPD: {
+      break;
+      const tmp = stack.pop();
+      stack.pop();
+      stack.pop();
+      stack.push(tmp);
+      break;
+    }
+    case BC.OMEGA: {
+      stack.push(JSON.parse(JSON.stringify(env['⍵'])));
+      break;
+    }
+    case BC.ALPHA: {
+      stack.push(JSON.parse(JSON.stringify(env['⍺'])));
+      break;
+    }
 
     default:
       return [false, "bytecode error on '" + Object.keys(BC).find(k => BC[k] === f) + "'"];
@@ -1043,7 +1156,15 @@ function apply_f(f){
 
 let env = {};
 function vm(bc){
+  const env_cpy = JSON.parse(JSON.stringify(env));
+
   //printBC(bc);
+  if(stack.length > 0) env["⍵"] = JSON.parse(JSON.stringify(stack[stack.length - 1]));
+  if(stack.length > 1) {
+    env["⍺"] = env["⍵"];
+    env["⍵"] = JSON.parse(JSON.stringify(stack[stack.length - 2]));
+  }
+
   let pc = 0;
   while(pc < bc.length){
     if(bc[pc] === BC.ASSIGNFN){
@@ -1073,7 +1194,7 @@ function vm(bc){
       pc ++;
     }
 
-    while(pc < bc.length && [BC.FOLD, BC.SCAN, BC.DIP, BC.REPEAT, BC.UNTIL, BC.IF].includes(bc[pc])){
+    while(pc < bc.length && [BC.FOLD, BC.SCAN, BC.REPEAT, BC.UNTIL, BC.IF].includes(bc[pc])){
       modifier_stack.push(bc[pc++]);
     }
 
@@ -1082,6 +1203,7 @@ function vm(bc){
     if(bc[pc] === BC.ASSIGN){
       if(modifier_stack.length) return [false, "bytecode error: modifiers for ←"];
       env[bc[++pc]] = stack.pop();
+      stack.push(JSON.parse(JSON.stringify(env[bc[pc]])));
       pc ++;
       continue;
     }
@@ -1202,16 +1324,6 @@ function vm(bc){
             break;
           }
 
-          case BC.DIP: {
-            to_f = () => {
-              const a = stack.pop();
-              const r = old_f();
-              if(r) return r;
-              stack.push(a);
-            }
-            break;            
-          }
-
           case BC.REPEAT: {
             to_f = () => {
               const times = stack.pop();
@@ -1281,11 +1393,14 @@ function vm(bc){
 
     if(bc[pc] === BC.ASSIGN){
       env[bc[++pc]] = stack.pop();
+      stack.push(JSON.parse(JSON.stringify(env[bc[pc]])));
       pc ++;
     }
   }
 
   if(array_stack.length) return [false, '): Mismatched parenthesis'];
+
+  env = env_cpy;
 
   return stack.map(Stringify).join("\n");
 }
@@ -1338,10 +1453,17 @@ function execSource(v){
     return string;
   }
 
-  tokens = tokens.filter(t => t !== "\n");
   const parsed = parse(tokens);
 
-  if(parsed.length && parsed[0] === false) return parsed[1];
+  if(parsed.length && parsed[0] === false) {
+    let rstring = '';
+    for(let i = 0; i < tokens.length; i ++){
+      if(tokens[i] === '\n') break;
+      rstring += tokens[i].length && tokens[i][0] === "'" ? tokens[i] + "'" : tokens[i];
+      rstring += " ";
+    }
+    return parsed[1] + '\n\n... ' + rstring + '\n    ↑ here';
+  }
 
   stack = [];
   array_stack = [];
