@@ -33,11 +33,11 @@ text.addEventListener("keydown", e => {
   }
 }, false);
 
-const glyphs = "⍬ + ¯ - × ÷ ⌹ * ⍟ ↑ ↓ ~ | ⌈ ⌊ % < ≤ = ≥ > ≠ ≡ ≢ ⊃ ⊂ ⊆ ⊥ ⊤ ⍳ ⍸ ⍒ ⍋ ⌽ ⊖ & , # ! ⍴ ⍣ ⍤ / \\ ? ← ⍅ () _ '' ⍺ ⍵ ∇ {} [] ⋄";
+const glyphs = "⍬ + ¯ - × ÷ ⌹ * ⍟ ↑ ↓ ~ | ⌈ ⌊ % < ≤ = ≥ > ≠ ≡ ≢ ⊃ ⊂ ⊆ ⊥ ⊤ ⍳ ⍸ ⍒ ⍋ ⌽ ⊖ & , # ! ⍴ ⍣ ⍤ / \\ ? ← ⍅ () '' ⍺ ⍵ ∇ {} [] ⋄";
 const functions = "+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊃⊂⊆⊥⊤⍳⍸⍒⍋⌽⊖&,#!⍴()∇";
 const modifiers = "⍤⍣/\\?";
 const constants = "⍬1234567890.";
-const stackers = "←⍅()_∇{}[]";
+const stackers = "←⍅()∇{}[]";
 const info = {
   "⍬": "Zilde",
   "+": "Add\n2→1",
@@ -89,7 +89,6 @@ const info = {
   "←": "Assign",
   "⍅": "Function assign",
   "()": "Array",
-  "_": "Stranding",
   "⍺": "Left argument",
   "⍵": "Right argument",
   "∇": "Recur",
@@ -281,6 +280,7 @@ const BC = [
   "ROTATE",
   "REVERSE",
   "CATENATE",
+  "LAMINATE",
   "SHAPEOF",
   "INDICES",
   "INDICESOF",
@@ -327,11 +327,9 @@ function array(sh, v){
 
 function parse_atom(ts){
   if(typeof(ts[0]) === 'number') {
-    if(ts.length > 1 && ts[1] === "_"){
+    if(ts.length > 1 && typeof(ts[1]) === 'number'){
       let res = [ts.shift()];
-      while(ts.length > 0 && ts[0] === "_"){
-        ts.shift();
-        if(ts.length < 1 || typeof(ts[0]) !== 'number') return [false, "Expected number after stranding."];
+      while(ts.length > 0 && typeof(ts[0]) === 'number'){
         res.push(ts.shift());
       }
       return [BC.CONST, array([res.length], res)];
@@ -354,6 +352,13 @@ function parse_atom(ts){
   } else if(ts[0] === "("){
     ts.shift();
     let res = parse_expression(ts);
+    let any_arr = false;
+    while("⋄\n".includes(ts[0])) {
+      ts.shift();
+      let next = parse_expression(ts);
+      res = next.concat(res).concat([any_arr ? BC.CATENATE : BC.LAMINATE]);
+      any_arr = true;
+    }
     if(ts.length < 1 || ts[0] !== ")") return [false, "Expected closing )"];
     ts.shift();
     return res;
@@ -952,6 +957,22 @@ function apply_f(f){
       }
       break;
     }
+    case BC.LAMINATE: {
+      let a = stack.pop();
+      let l = stack.length-1;
+
+      if(is_atomic(a)) a = array([1], [...a]);
+      if(is_atomic(stack[l])) stack[l] = array([1], [...stack[l]]);
+
+      if(a.shape.length !== stack[l].shape.length) return [false, "Laminate: Rank error"];
+      for(let i = 0; i < a.shape.length; i ++){
+        if(a.shape[i] !== stack[l].shape[i]) return [false, "Laminate: Shape error"];
+      }
+
+      stack[l].shape.unshift(2);
+      stack[l].ravel = a.ravel.concat(stack[l].ravel);
+      break;
+    }
     case BC.CATENATE: {
       let a = stack.pop();
       let l = stack.length-1;
@@ -976,7 +997,7 @@ function apply_f(f){
         stack[l].shape[0] ++;
       } else return [false, ",: Shape mismatch"];
 
-      stack[l].ravel = stack[l].ravel.concat(a.ravel);
+      stack[l].ravel = a.ravel.concat(stack[l].ravel);
       break; 
     }
     case BC.SHAPEOF: {
