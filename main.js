@@ -3,11 +3,11 @@ import './style.css'
 const bar = document.getElementById("languagebar");
 const text = document.getElementById("srcinput");
 
-const examples = /*[
+const examples = [
   "'factorial of 5 is'\n×/!5", 
   "⌽(⍒2×+\\' '=s)⊂s←' talF LPA .selur'", 
   "s←'questionably, beatably, deniably, doubtedly,'\n¯1&' un'⊥[' '=r]r←' ',s\n'the best language ever'"
-];*/["3 {⍺⋄⍵*.5} 9"];//["{⍵*.5}⍤≡ 9"];
+];
 
 let example_index = Math.floor(Math.random() * examples.length);
 
@@ -244,7 +244,8 @@ function lex(v){
 const BC = [
   "CONST",
   "FOPEN",
-  "FUNCTION",
+  "MFUNCTION",
+  "DFUNCTION",
   "ASSIGN",
   "ASSIGNFN",
   "NAME",
@@ -302,8 +303,8 @@ const BC = [
   "OMEGA",
   "ALPHA",
   "POP",
-  "POPD",
-  "POPM"
+  "POPM",
+  "POPD"
 ].map((k,i)=>({[k]:i+1})).reduce((a,b)=>({...a,...b}));
 
 function formatBC(bc){
@@ -311,7 +312,7 @@ function formatBC(bc){
   for(let i = 0; i < bc.length; i ++){ 
     r.push(Object.keys(BC).find(k=>BC[k] === bc[i]));
     if(bc[i] === BC.CONST || bc[i] === BC.NAME) r.push(bc[++i]);
-    else if(bc[i] === BC.FUNCTION) r.push(formatBC(bc[++i]));
+    else if(bc[i] === BC.MFUNCTION || bc[i] === BC.DFUNCTION) r.push(formatBC(bc[++i]));
     else if(bc[i] === BC.ASSIGN) r.push(bc[++i]);
     else if(bc[i] === BC.ASSIGNFN) r.push(bc[++i], bc[++i]);
   }
@@ -382,7 +383,7 @@ function parse_function_atom(ts){
       if(t === "⍺") { has_a = true; break; }
     }
 
-    return [BC.FUNCTION, r, has_a ? BC.POPD : BC.POPM];
+    return [has_a ? BC.DFUNCTION : BC.MFUNCTION, r];
   } else if(typeof(ts[0]) === 'string' && functions.includes(ts[0])) {
     const f = ts.shift();
     const r = {
@@ -506,6 +507,7 @@ function parse_expression(ts){
       ts.shift();
       let rhs = parse_function(ts);
       if(rhs.length && rhs[0] === false) return rhs;
+      // todo: mfunction, dfunction
       return [BC.ASSIGNFN, lhs[1][0].toUpperCase() + lhs[1].slice(1), [BC.FUNCTION, rhs[0] === BC.FUNCTION ? rhs : rhs[0]]];
     }
 
@@ -1242,9 +1244,11 @@ function vm(bc){
     }
 
     if(modifier_stack.length === 0) {
-      if(bc[pc] === BC.FUNCTION) {
+      if(bc[pc] === BC.MFUNCTION || bc[pc] === BC.DFUNCTION) {
+        const dy = bc[pc] === BC.DFUNCTION;
         const r = vm(bc[++pc]);
         if(r.length && r[0] === false) return r;
+        apply_f(dy ? BC.POPD : BC.POPM);
       } else if(bc[pc] === BC.RECUR){
         const r = vm(bc);
         if(r.length && r[0] === false) return r;
@@ -1254,12 +1258,14 @@ function vm(bc){
       }
     } else {
       let to_f;
-      if(bc[pc] === BC.FUNCTION){
+      if(bc[pc] === BC.MFUNCTION || bc[pc] === BC.DFUNCTION){
+        const dy = bc[pc] === BC.DFUNCTION;
         pc++;
         const func = bc[pc];
         to_f = () => {
           const r = vm(func);
           if(r.length && r[0] === false) return r;
+          apply_f(dy ? BC.POPD : BC.POPM);
         };
       }
       else if(bc[pc] === BC.RECUR){
@@ -1281,12 +1287,14 @@ function vm(bc){
         let second_f;
         if([BC.UNTIL, BC.IF].includes(pm)) {
           pc ++;
-          if(bc[pc] === BC.FUNCTION){
+          if(bc[pc] === BC.MFUNCTION || bc[pc] === BC.DFUNCTION){
+            const dy = bc[pc] === BC.DFUNCTION;
             pc++;
             const func = bc[pc];
             second_f = () => {
               const r = vm(func);
               if(r.length && r[0] === false) return r;
+              apply_f(dy ? BC.POPD : BC.POPM);
             };
           }
           else if(bc[pc] === BC.RECUR){
@@ -1372,6 +1380,7 @@ function vm(bc){
             break;         
           }
 
+          // todo: dyadic
           case BC.UNTIL: {
             to_f = () => {
               let prev = false;
