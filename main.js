@@ -3,11 +3,11 @@ import './style.css'
 const bar = document.getElementById("languagebar");
 const text = document.getElementById("srcinput");
 
-const examples = /*[
+const examples = [
   "'factorial of 5 is'\n×/!5", 
-  "⌽(⍒2×+\\' '=s)⊂s←' talF LPA .selur'", 
-  "s←'questionably, beatably, deniably, doubtedly,'\n¯1&' un'⊥[' '=r]r←' ',s\n'the best language ever'"
-];*/["1\n{⍵*.5}⍣[5] 9"];
+  "⌽(⍒+\\' '=s)⊂s←' talF LPA .selur'", 
+  "s←'questionably, beatably, deniably, doubtedly,'\n¯1&' un'⊥[' '=r]r←' ',s\n'the best language ever'",
+];
 
 let example_index = Math.floor(Math.random() * examples.length);
 
@@ -33,8 +33,8 @@ text.addEventListener("keydown", e => {
   }
 }, false);
 
-const glyphs = "⍬ + ¯ - × ÷ ⌹ * ⍟ ↑ ↓ ~ | ⌈ ⌊ % < ≤ = ≥ > ≠ ≡ ≢ ⊃ ⊂ ⊆ ⊥ ⊤ ⍳ ⍸ ⍒ ⍋ ⌽ ⊖ & , # ! ⍴ ⍣ / \\ ? ← ⍅ () '' ⍺ ⍵ ∇ {} [] ⋄";
-const functions = "+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊃⊂⊆⊥⊤⍳⍸⍒⍋⌽⊖&,#!⍴()∇";
+const glyphs = "⍬ + ¯ - × ÷ ⌹ * ⍟ ↑ ↓ ~ | ⌈ ⌊ % < ≤ = ≥ > ≠ ≡ ≢ ⊃ ⊂ ⊆ ⊥ ⊤ ⍳ ⍸ ⍒ ⍋ ⌽ ⊖ & , ⍪ # ! ⍴ ⍣ / \\ ? ← ⍅ () '' ⍺ ⍵ ∇ {} [] ⋄";
+const functions = "+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊃⊂⊆⊥⊤⍳⍸⍒⍋⌽⊖&,⍪#!⍴()∇";
 const modifiers = "⍣/\\?";
 const constants = "⍬1234567890.";
 const stackers = "←⍅()∇{}[]";
@@ -71,6 +71,7 @@ const info = {
   "⊖": "Rotate\n2→1",
   "⌽": "Reverse\n1→1",
   ",": "Catenate\n2→1",
+  "⍪": "Laminate\n2→1",
   "#": "Shape of\n1→1",
   "!": "Indices/Classify\n1→1",
   "⍳": "Indices-of\n2→1",
@@ -240,87 +241,6 @@ function lex(v){
   return tokens;
 }
 
-const BC = [
-  "CONST",
-  "FOPEN",
-  "MFUNCTION",
-  "DFUNCTION",
-  "ASSIGN",
-  "ASSIGNFN",
-  "NAME",
-
-  "ADD",
-  "NEGATE",
-  "SUB",
-  "MUL",
-  "DIV",
-  "EXP",
-  "LOG",
-  "MATINV",
-  "ARROPEN",
-  "ARRCLOSE",
-  "MAX",
-  "MIN",
-  "MOD",
-  "NOT",
-  "DISTANCE",
-  "CEILING",
-  "FLOOR",
-  "MATCH",
-  "NMATCH",
-  "EQUAL",
-  "NEQUAL",
-  "LESS",
-  "GREATER",
-  "LESSEQ",
-  "GREATEREQ",
-  "INDEX",
-  "KEEP",
-  "REPLICATE",
-  "ROTATE",
-  "REVERSE",
-  "CATENATE",
-  "LAMINATE",
-  "SHAPEOF",
-  "INDICES",
-  "INDICESOF",
-  "FINDSEQ",
-  "TAKEDROP",
-  "RESHAPE",
-  "GRADEUP",
-  "GRADEDOWN",
-  "SPLICE",
-  "PICK",
-
-  "RECUR",
-  "REPEAT",
-  "UNTIL",
-  "FOLD",
-  "SCAN",
-  "IF",
-
-  "OMEGA",
-  "ALPHA",
-  "POP",
-  "POPM",
-  "POPD"
-].map((k,i)=>({[k]:i+1})).reduce((a,b)=>({...a,...b}));
-
-function formatBC(bc){
-  let r = [];
-  for(let i = 0; i < bc.length; i ++){ 
-    r.push(Object.keys(BC).find(k=>BC[k] === bc[i]));
-    if(bc[i] === BC.CONST || bc[i] === BC.NAME) r.push(bc[++i]);
-    else if(bc[i] === BC.MFUNCTION || bc[i] === BC.DFUNCTION) r.push(formatBC(bc[++i]));
-    else if(bc[i] === BC.ASSIGN) r.push(bc[++i]);
-    else if(bc[i] === BC.ASSIGNFN) r.push(bc[++i], bc[++i]);
-  }
-  return r;
-}
-function printBC(bc){
-  console.log(formatBC(bc));
-}
-
 function array(sh, v){
   return {shape: sh, ravel: v};
 }
@@ -332,23 +252,23 @@ function parse_atom(ts){
       while(ts.length > 0 && typeof(ts[0]) === 'number'){
         res.push(ts.shift());
       }
-      return [BC.CONST, array([res.length], res)];
+      return { type: "CONST", value: array([res.length], res) };
     }
-    else return [BC.CONST, ts.shift()];
+    else return { type: "CONST", value: ts.shift() };
   } else if(ts[0] === '⍬') {
     ts.shift();
-    return [BC.CONST, array([0], [])];
+    return { type: "CONST", value: array([0], []) };
   } else if(ts[0] === '⍵'){
     ts.shift();
-    return [BC.OMEGA];
+    return { type: "OMEGA" };
   } else if(ts[0] === '⍺'){
     ts.shift();
-    return [BC.ALPHA];
+    return { type: "ALPHA" };
   } else if(ts[0].length && ts[0][0] === "'"){
     const t = ts.shift();
-    return [BC.CONST, t.length === 2 ? t.slice(1) : array([t.length - 1], [...t.slice(1)])];
+    return { type: "CONST", value: t.length === 2 ? t.slice(1) : array([t.length - 1], [...t.slice(1)]) };
   } else if(typeof(ts[0]) === 'string' && !glyphs.includes(ts[0])){
-    return [BC.NAME, ts.shift()];
+    return { type: "NAME", value: ts.shift() };
   } else if(ts[0] === "("){
     ts.shift();
     let res = parse_expression(ts);
@@ -356,7 +276,7 @@ function parse_atom(ts){
     while("⋄\n".includes(ts[0])) {
       ts.shift();
       let next = parse_expression(ts);
-      res = next.concat(res).concat([any_arr ? BC.CATENATE : BC.LAMINATE]);
+      res = { type: "CALL", fn: { type: "PRIMITIVE", value: any_arr ? "," : "⍪" }, lhs: res, rhs: next };
       any_arr = true;
     }
     if(ts.length < 1 || ts[0] !== ")") return [false, "Expected closing )"];
@@ -376,107 +296,42 @@ function parse_function_atom(ts){
     if(ts.length < 1 || ts[0] !== "}") return [false, "Mismatched {"];
     ts.shift();
 
-    old_toks.splice(ts.length, old_toks.length - ts.length);
+    old_toks.splice(old_toks.length - ts.length, ts.length);
     let has_a = false;
     for(let t of old_toks){
       if(t === "⍺") { has_a = true; break; }
     }
 
-    return [has_a ? BC.DFUNCTION : BC.MFUNCTION, r];
+    return { type: "FUNCTION", dyadic: has_a, expression: r };
   } else if(typeof(ts[0]) === 'string' && functions.includes(ts[0])) {
     const f = ts.shift();
-    const r = {
-      "+": BC.ADD,
-      "-": BC.SUB,
-      "×": BC.MUL,
-      "÷": BC.DIV,
-      "*": BC.EXP,
-      "⍟": BC.LOG,
-      "⌹": BC.MATINV,
-      "¯": BC.NEGATE,
-      "↑": BC.MAX,
-      "↓": BC.MIN,
-      "~": BC.NOT,
-      "|": BC.DISTANCE,
-      "⌈": BC.CEILING,
-      "⌊": BC.FLOOR,
-      "%": BC.MOD,
-      "=": BC.EQUAL,
-      "≠": BC.NEQUAL,
-      "<": BC.LESS,
-      ">": BC.GREATER,
-      "≤": BC.LESSEQ,
-      "≥": BC.GREATEREQ,
-      "≡": BC.MATCH,
-      "≢": BC.NMATCH,
-      "⊃": BC.REPLICATE,
-      "⊂": BC.INDEX,
-      "⊆": BC.KEEP,
-      "⊥": BC.SPLICE,
-      "⊤": BC.PICK,
-      "⌽": BC.REVERSE,
-      "⊖": BC.ROTATE,
-      ",": BC.CATENATE,
-      "#": BC.SHAPEOF,
-      "!": BC.INDICES,
-      "⍳": BC.INDICESOF,
-      "⍸": BC.FINDSEQ,
-      "&": BC.TAKEDROP,
-      "⍴": BC.RESHAPE,
-      "⍋": BC.GRADEUP,
-      "⍒": BC.GRADEDOWN,
-
-      "(": BC.ARROPEN,
-      ")": BC.ARRCLOSE,
-
-      "∇": BC.RECUR
-    }[f];
-    if(r === undefined){
-       return [false, "internalerror on '" + f + "'"]; 
-    } 
-    return [r];
+    return { type: "PRIMITIVE", value: f };
   } else if(typeof(ts[0]) === 'string' && !glyphs.includes(ts[0])){
-    return [BC.NAME, ts.shift()];
+    return { type: "NAME", value: ts.shift() };
   } else {
     return [false, "Syntax error: expected a function"];
   }
 }
 
-// todo: dyadic modifier
 function parse_function(ts){
   let res = parse_function_atom(ts);
   if(res.length && res[0] === false) return res;
-  while(typeof(ts[0]) === 'string' && (modifiers.includes(ts[0]) || ts[0] === "[")) {
+  while(typeof(ts[0]) === 'string' && modifiers.includes(ts[0])) {
     const m = ts.shift();
-    if(m === "["){
-      res = parse_expression(ts).concat(res);
-      if(ts.length < 1 || ts[0] !== "]") return [false, "Expected closing ]"];
+    res = { type: "MODIFIER", modifier: m, fn: res };
+    if(m === "⍣" && ts.length && ts[0] === "["){
       ts.shift();
-      continue;
-    }
-    const r = {
-      "/": BC.FOLD,
-      "\\": BC.SCAN,
-      "⍣": BC.UNTIL,
-      "?": BC.IF
-    }[m];
-    if(r === undefined){
-       return [false, "internalerror on '" + m + "'"]; 
-    } 
-    res = [r].concat(res);
-    if(r === BC.UNTIL && ts.length && ts[0] === "["){
-      ts.shift();
-      res[0] = BC.REPEAT;
-      res = parse_expression(ts).concat(res);
+      res.modifier = "⌺";
+      res.count = parse_expression(ts);
       if(ts.length < 1 || ts[0] !== "]") return [false, "Expected closing ]"];
       ts.shift();
       continue;
     }
     
-    if(r === BC.IF || r === BC.UNTIL){
+    if(m === "?" || m === "⍣"){
       let extra = parse_function_atom(ts);
       if(extra.length && extra[0] === false) return extra;
-      res = res.concat(extra);
+      res.fn2 = extra;
     }
   }
   return res;
@@ -496,7 +351,7 @@ function isLowerCase(str) {
 function parse_expression(ts){
   if(ts.length === 0 || terminators.includes(ts[0])) return [false, "Expected an expression."];
 
-  let lhs = [];
+  let lhs;
   if(is_value(ts[0])){
     lhs = parse_atom(ts);
     if(lhs.length && lhs[0] === false) return lhs;
@@ -504,25 +359,31 @@ function parse_expression(ts){
 
   if(ts.length > 0 && !terminators.includes(ts[0])){
     if(ts[0] === "←") {
-      if(lhs.length < 2 || lhs[0] != BC.NAME) return [false, "Expected a name to assign to"];
+      if(lhs.type != "NAME") return [false, "Expected a name to assign to"];
       ts.shift();
       let rhs = parse_expression(ts);
       if(rhs.length && rhs[0] === false) return rhs;
-      return rhs.concat([BC.ASSIGN, lhs[1]])
+      return { type: "ASSIGN", name: lhs.value, value: rhs };
     } else if(ts[0] === "⍅"){
-      if(lhs.length < 2 || lhs[0] != BC.NAME) return [false, "Expected a name to assign to"];
+      if(lhs.type != "NAME") return [false, "Expected a name to assign to"];
       ts.shift();
       let rhs = parse_function(ts);
       if(rhs.length && rhs[0] === false) return rhs;
-      // todo: mfunction, dfunction
-      return [BC.ASSIGNFN, lhs[1][0].toUpperCase() + lhs[1].slice(1), [BC.FUNCTION, rhs[0] === BC.FUNCTION ? rhs : rhs[0]]];
+      return { type: "ASSIGNFN", name: lhs.value[0].toUpperCase() + lhs.value.slice(1), fn: rhs};
     }
 
-    let f = parse_function(ts);
-    if(f.length && f[0] === false) return f;
+    let fn = parse_function(ts);
+    let bracket;
+    if(ts.length > 0 && ts[0] === "["){
+      ts.shift();
+      bracket = parse_expression(ts);
+      if(ts.length < 1 || ts[0] !== "]") return [false, "Expected closing ]"];
+      ts.shift();
+    }
+    if(fn.length && fn[0] === false) return fn;
     let rhs = parse_expression(ts);
     if(rhs.length && rhs[0] === false) return rhs;
-    lhs = rhs.concat(lhs).concat(f);
+    lhs = { type: "CALL", fn, lhs, rhs, bracket };
   }
   return lhs;
 }
@@ -534,14 +395,12 @@ function parse(ts, toplevel){
   for(let i = 0; i < 100 && ts.length > 0 && ts[0] !== "}"; i ++){
     const r = parse_expression(ts);
     if(r.length && r[0] === false) return r;
-    res = res.concat(r);
+    res.push(r);
 
     while(ts.length > 0 && "\n⋄".includes(ts[0])) ts.shift();
-
-    if((!toplevel && ts[0] !== "}") || (r.length > 1 && r[r.length - 2] === BC.ASSIGN)) res.push(BC.POP);
   }
 
-  return res;
+  return { type: "EXPRLIST", exprs: res, toplevel };
 }
 
 function parse_full(ts){
@@ -549,6 +408,33 @@ function parse_full(ts){
   if(expr.length > 0 && expr[0] === false) return expr;
   if(ts.length > 0) return [false, "Mismatched }"];
   return expr;
+}
+
+function Stringify(v){
+  if(typeof(v) === 'object') {
+    let scanshape = [];
+    let prev = 1;
+    for(let i = v.shape.length - 1; i >= 0; i --){
+      prev *= v.shape[i];
+      scanshape.push(prev);
+    }
+    let r = "";
+    if(!v.ravel.length) {
+      if(v.shape.length > 1) r += v.shape + '⍴0';
+      else r += '⍬';
+    }
+    for(let i = 0; i < v.ravel.length; i ++){
+      if(i !== 0){
+        for(let s of scanshape){
+          if(i % s === 0) r += "\n";
+        }
+      }
+
+      r += ''+v.ravel[i] + (typeof(v.ravel[i]) === 'string' ? "" : " ");
+    }
+    return r;
+  }
+  else return ''+v;
 }
 
 function matmul(m1, m2, n) {
@@ -703,112 +589,63 @@ function mpervade(f, a){
   return array(a.shape, res);
 }
 
-let stack = [];
-let array_stack = [];
-
-const dyadic_ariths = [BC.ADD, BC.SUB, BC.MUL, BC.DIV, BC.EXP, BC.LOG, BC.MAX, BC.MIN, BC.MOD, BC.EQUAL, BC.NEQUAL, BC.LESS, BC.GREATER, BC.LESSEQ, BC.GREATEREQ];
-const darith_to_fname = ["+", "-", "×", "÷", "*", "⍟", "↑", "↓", "%", "=", "≠", "<", ">", "≤", "≥"];
+const dyadic_ariths = ["+", "-", "×", "÷", "*", "⍟", "↑", "↓", "%", "=", "≠", "<", ">", "≤", "≥"];
 const darith_fns = [(a,b)=>a+b, (a,b)=>a-b, (a,b)=>a*b, (a,b)=>a/b, Math.pow, (a,b)=>Math.log(a) / Math.log(b), Math.max, Math.min, (a,b)=>((a % b) + b) % b, (a,b)=>+(a === b), (a,b)=>+(a !== b), (a,b)=>+(a<b), (a,b)=>+(a>b), (a,b)=>+(a<=b), (a,b)=>+(a>=b)];
-function dyadic_arith(f){
+function dyadic_arith(f, a, b){
   const i = dyadic_ariths.indexOf(f);
-  let a = stack.pop();
-  if(a === undefined) return [false, darith_to_fname[i] + ': Expected a value'];
-  let l = stack.length - 1;
-  if(l < 0) return [false, darith_to_fname[i] + ': Expected another value'];
 
-  let r = pervade(darith_fns[i],a,stack[l]);
-  if(r === undefined)  return [false, darith_to_fname[i] + ': Shape mismatch'];
-  stack[l] = r;
+  let r = pervade(darith_fns[i],a,b);
+  if(r === undefined)  return [false, f + ': Shape mismatch'];
+  return r;
 }
 
-const monadic_ariths = [BC.NEGATE, BC.NOT, BC.CEILING, BC.FLOOR];
-const marith_to_fname = ["¯", "~", "⌈", "⌊"];
+const monadic_ariths = ["¯", "~", "⌈", "⌊"];
 const marith_fns = [a=>-a, a=>+!a, Math.ceil, Math.floor];
-function monadic_arith(f){
+function monadic_arith(f, a){
   const i = monadic_ariths.indexOf(f);
 
-  let l = stack.length - 1;
-  if(l < 0) return [false, marith_to_fname[i] + ': Expected a value'];
-  stack[l] = mpervade(marith_fns[i], stack[l]);
+  return mpervade(marith_fns[i], a);
 }
 
-function apply_f(f){
+
+function apply_f(f, a, b, brack){
   switch(f){
-    case BC.NEGATE:
-    case BC.NOT:
-    case BC.CEILING:
-    case BC.FLOOR: {
-      const r = monadic_arith(f);
-      if(r) return r;
-      break;
+    case "¯":
+    case "~":
+    case "⌈":
+    case "⌊": {
+      if(b !== undefined) return [false, f + ": Too many values"];
+      return monadic_arith(f, a);
     }
 
-    case BC.ADD: 
-    case BC.SUB: 
-    case BC.MUL:
-    case BC.DIV:
-    case BC.EXP:
-    case BC.LOG:
-    case BC.MAX:
-    case BC.MIN: 
-    case BC.MOD:
-    case BC.EQUAL:
-    case BC.NEQUAL:
-    case BC.LESS:
-    case BC.GREATER:
-    case BC.LESSEQ:
-    case BC.GREATEREQ: {
-      const r = dyadic_arith(f);
-      if(r) return r;
-      break;
+    case "+": 
+    case "-": 
+    case "×":
+    case "÷":
+    case "*":
+    case "⍟":
+    case "↑":
+    case "↓": 
+    case "%":
+    case "=":
+    case "≠":
+    case "<":
+    case ">":
+    case "≤":
+    case "≥": {
+      if(b === undefined) return [false, f + ": Expected another value"];
+      return dyadic_arith(f, b, a);
     }
 
-    case BC.MATINV: {
-      let l = stack.length - 1;
-      if(l < 0) return [false, "⌹: Expected a value"];
-      const r = matrix_invert(stack[l]);
-      if(r.length && r[0] === false) return r;
-      stack[l] = r;
-      break;
+    case "⌹": {
+      if(b !== undefined) return [false, "⌹: Too many values"];
+      return matrix_invert(a);
     }
 
-    case BC.ARROPEN: {
-      array_stack.push(stack.length);
-      break;
-    }
-
-    case BC.ARRCLOSE: {
-      if(!array_stack.length) return [false, "(: Mismatched parenthesis"];
-      const top = array_stack.pop();
-      const l = stack.length;
-      let res = array([], []);
-      let trailing = false;
-      for(let i = 0; i < l - top; i ++){
-        const e = stack.pop();
-        let shape;
-        if(is_atomic(e)) {
-          res.ravel.unshift(e);
-          shape = [];
-        } else {
-          res.ravel = e.ravel.concat(res.ravel);
-          shape = e.shape;
-        }
-        if(trailing === false) trailing = shape;
-        else if(trailing.length !== shape.length ||
-        !trailing.every((val, index) => val === shape[index])) return [false, "(): Shape mismatch"];
-      }
-      res.shape.push(l - top);
-      res.shape = res.shape.concat(trailing ? trailing : []);
-      stack.push(res);
-      break;
-    }
-
-    case BC.DISTANCE: {
-      const a = stack.pop();
-      const b = stack.pop();
+    case "|": {
+      if(b === undefined) return [false, "|: Expected another value"];
       if(is_atomic(a) && is_atomic(b)) {
-        stack.push(Math.abs(a - b));
-        break;
+        return Math.abs(a - b);
       }
       if(typeof(a) != typeof(b)) return [false, '|: Rank error'];
 
@@ -820,62 +657,54 @@ function apply_f(f){
 
         sum += Math.pow(r - l, 2);
       }
-      stack.push(Math.sqrt(sum));
-      break;
+      return Math.sqrt(sum);
     }
-    case BC.MATCH: {
-      const a = stack.pop();
-      let l = stack.length - 1;
-      stack[l] = is_match(stack[l], a);
-      break;
+    case "≡": {
+      if(b === undefined) return [false, "≡: Expected another value"];
+      return is_match(a, b);
     }
-    case BC.NMATCH: {
-      const a = stack.pop();
-      let l = stack.length - 1;
-      stack[l] = +!is_match(stack[l], a);
-      break;
+    case "≢": {
+      if(b === undefined) return [false, "≡: Expected another value"];
+      return +!is_match(a, b);
     }
     
-    case BC.INDEX: {
-      const a = stack.pop();
-      let l = stack.length - 1;
+    case "⊂": {
+      if(b === undefined) return [false, "⊂: Expected another value"];
+      const per = a.ravel.length / a.shape[0];
 
-      const per = stack[l].ravel.length / stack[l].shape[0];
-
-      if(is_atomic(a)){
-        const st = (a-1) * per;
-        stack[l] = stack[l].shape.length === 1 ? stack[l].ravel[st] : array(stack[l].shape.slice(1), stack[l].ravel.slice(st, st + per));
-        break;
+      if(is_atomic(b)){
+        const st = (b-1) * per;
+        return a.shape.length === 1 ? a.ravel[st] : array(a.shape.slice(1), a.ravel.slice(st, st + per));
       }
 
       let ravel = [];
-      for(let i = 0; i < a.ravel.length; i ++){
-        const st = (a.ravel[i]-1) * per;
-        ravel = ravel.concat(stack[l].ravel.slice(st, st + per));
+      for(let i = 0; i < b.ravel.length; i ++){
+        const st = (b.ravel[i]-1) * per;
+        ravel = ravel.concat(a.ravel.slice(st, st + per));
       }
-      stack[l] = array(a.shape.concat(stack[l].shape.slice(1)), ravel);
-      break;
+      return array(b.shape.concat(a.shape.slice(1)), ravel);
     }
-    case BC.REPLICATE: {
-      let indices = stack.pop();
+    case "⊃": {
+      if(b !== undefined) return [false, "⊃: Too many values"];
 
-      if(is_atomic(indices)) indices = array([1], [indices]);
+      if(is_atomic(a)) a = array([1], [a]);
 
-      if(indices.shape.length > 1) return [false, "⊃: Rank error"];
+      if(a.shape.length > 1) return [false, "⊃: Rank error"];
 
       let result = [];
-      for(let i = 0; i < indices.ravel.length; i ++){
-        for(let j = 0; j < indices.ravel[i]; j ++){
+      for(let i = 0; i < a.ravel.length; i ++){
+        for(let j = 0; j < a.ravel[i]; j ++){
           result.push(i+1);
         }
       }
-      stack.push(array([result.length], result));
-      break;
+      return array([result.length], result);
     }
-    case BC.SPLICE: {
-      const indices = stack.pop();
-      const sploke = stack.pop();
-      const arr = stack.pop();
+    case "⊥": {
+      if(b === undefined || brack === undefined) return [false, "⊥: Expected another value"];
+
+      const indices = brack;
+      const sploke = b;
+      const arr = a;
 
       if(arr.shape.length != sploke.shape.length) return [false, '⊥: Rank mismatch'];
       for(let i = 1; i < arr.shape.length; i ++){
@@ -898,13 +727,10 @@ function apply_f(f){
         }
       }
 
-      stack.push(result);
-      break;
+      return result;
     }
-    case BC.PICK: {
-      const indices = stack.pop();
-      const a = stack.pop();
-      const b = stack.pop();
+    case "⊤": {
+      const indices = brack;
       if(a.shape.length != b.shape.length) return [false, '⊤: Rank mismatch'];
       for(let i = 0; i < a.shape.length; i ++){
         if(a.shape[i] != b.shape[i]) return [false, '⊤: Shape mismatch'];
@@ -919,21 +745,19 @@ function apply_f(f){
         else result.ravel = result.ravel.concat(b.ravel.slice(i * per, i * per + per));
       }
 
-      stack.push(result);
-      break;
+      return result;
     }
 
-    case BC.KEEP: {
-      let indices = stack.pop();
-      const arr = stack.pop();
+    case "⊆": {
+      let indices = b;
+      const arr = a;
 
       if(is_atomic(arr) && is_atomic(indices)) {
         let r = [];
         for(let i = 0; i < indices; i ++){
           r.push(arr);
         }
-        stack.push(array([r.length], r));
-        break;
+        return array([r.length], r);
       }
 
       if(typeof(arr) != typeof(indices)) return [false, '⊆: Rank mismatch'];
@@ -948,95 +772,88 @@ function apply_f(f){
           klen ++;
         }
       }
-      stack.push(array([klen, ...arr.shape.slice(1)], result));
-      break;
+      return array([klen, ...arr.shape.slice(1)], result);
     }
-    case BC.ROTATE: {
-      const a = stack.pop();
-      let l = stack.length - 1;
-      const per = stack[l].ravel.length / stack[l].shape[0];
-      if(a > 0){
-        for(let i = 0; i < a; i ++){
-          const rr = stack[l].ravel.splice(0, per);
-          stack[l].ravel = stack[l].ravel.concat(rr);
+    case "⊖": {
+      const acpy = JSON.parse(JSON.stringify(a));
+      const per = acpy.ravel.length / acpy.shape[0];
+      if(b > 0){
+        for(let i = 0; i < b; i ++){
+          const rr = acpy.ravel.splice(0, per);
+          acpy.ravel = acpy.ravel.concat(rr);
         }
       } else {
-        for(let i = 0; i < -a; i ++){
-          const rr = stack[l].ravel.splice(stack[l].ravel.length - per, per);
-          stack[l].ravel = rr.concat(stack[l].ravel);
+        for(let i = 0; i < -b; i ++){
+          const rr = acpy.ravel.splice(acpy.ravel.length - per, per);
+          acpy.ravel = rr.concat(acpy.ravel);
         }
       }
-      break;
+      return acpy;
     }
-    case BC.REVERSE: {
-      let l = stack.length - 1;
-      const tl = stack[l].shape[0];
-      const per = stack[l].ravel.length / tl;
+    case "⌽": {
+      const tl = a.shape[0];
+      const per = a.ravel.length / tl;
+      const acpy = JSON.parse(JSON.stringify(a));
       for(let i = 0; i < tl / 2; i ++){
-        let tmp = stack[l].ravel.slice(i * per, i * per + per);
+        let tmp = acpy.ravel.slice(i * per, i * per + per);
         const bi = tl - i - 1;
-        stack[l].ravel.splice(i * per, per, ...stack[l].ravel.slice(bi * per, bi * per + per));
-        stack[l].ravel.splice(bi * per, per, ...tmp);
+        acpy.ravel.splice(i * per, per, ...acpy.ravel.slice(bi * per, bi * per + per));
+        acpy.ravel.splice(bi * per, per, ...tmp);
       }
-      break;
+      return acpy;
     }
-    case BC.LAMINATE: {
-      let a = stack.pop();
-      let l = stack.length-1;
-
+    case "⍪": {
       if(is_atomic(a)) a = array([1], [...a]);
-      if(is_atomic(stack[l])) stack[l] = array([1], [...stack[l]]);
+      if(is_atomic(b)) b = array([1], [...b]);
 
-      if(a.shape.length !== stack[l].shape.length) return [false, "Laminate: Rank error"];
+      if(a.shape.length !== b.shape.length) return [false, "Laminate: Rank error"];
       for(let i = 0; i < a.shape.length; i ++){
-        if(a.shape[i] !== stack[l].shape[i]) return [false, "Laminate: Shape error"];
+        if(a.shape[i] !== b.shape[i]) return [false, "Laminate: Shape error"];
       }
 
-      stack[l].shape.unshift(2);
-      stack[l].ravel = a.ravel.concat(stack[l].ravel);
-      break;
+      let bcpy = JSON.parse(JSON.stringify(b));
+      bcpy.shape.unshift(2);
+      bcpy.ravel = bcpy.ravel.concat(a.ravel);
+      return bcpy;
     }
-    case BC.CATENATE: {
-      let a = stack.pop();
-      let l = stack.length-1;
+    case ",": {
       if(is_atomic(a)) a = array([1], [...a]);
-      if(is_atomic(stack[l])) stack[l] = array([1], [...stack[l]]);
+      if(is_atomic(b)) b = array([1], [...b]);
 
-      if(stack[l].shape.length === a.shape.length) {
-        for(let i = 1; i < stack[l].shape.length; i ++){
-          if(stack[l].shape[i] !== a.shape[i]) return [false, ",: Shape mismatch"];
+      let bcpy = JSON.parse(JSON.stringify(b));
+
+      if(b.shape.length === a.shape.length) {
+        for(let i = 1; i < b.shape.length; i ++){
+          if(b.shape[i] !== a.shape[i]) return [false, ",: Shape mismatch"];
         }
-        stack[l].shape[0] += a.shape[0];
-      } else if(stack[l].shape.length === a.shape.length + 1) {
-        for(let i = 1; i < stack[l].shape.length; i ++){
-          if(stack[l].shape[i] !== a.shape[i - 1]) return [false, ",: Shape mismatch"];
+        bcpy.shape[0] += a.shape[0];
+      } else if(b.shape.length === a.shape.length + 1) {
+        for(let i = 1; i < bcpy.shape.length; i ++){
+          if(bcpy.shape[i] !== a.shape[i - 1]) return [false, ",: Shape mismatch"];
         }
-        stack[l].shape[0] ++;
-      } else if(a.shape.length === stack[l].shape.length + 1) {
+        bcpy.shape[0] ++;
+      } else if(a.shape.length === bcpy.shape.length + 1) {
         for(let i = 1; i < a.shape.length; i ++){
-          if(a.shape[i] !== stack[l].shape[i - 1]) return [false, ",: Shape mismatch"];
+          if(a.shape[i] !== bcpy.shape[i - 1]) return [false, ",: Shape mismatch"];
         }
-        stack[l].shape = a.shape;
-        stack[l].shape[0] ++;
+        bcpy.shape = a.shape;
+        bcpy.shape[0] ++;
       } else return [false, ",: Shape mismatch"];
 
-      stack[l].ravel = a.ravel.concat(stack[l].ravel);
-      break; 
+      bcpy.ravel = bcpy.ravel.concat(a.ravel);
+      return bcpy;
     }
-    case BC.SHAPEOF: {
-      let l = stack.length-1;
-      if(is_atomic(stack[l])) stack[l] = array([0], []);
-      else stack[l] = array([stack[l].shape.length], stack[l].shape);
-      break;
+    case "#": {
+      if(is_atomic(a)) return array([0], []);
+      else return array([a.shape.length], a.shape);
     }
-    case BC.INDICES: {
-      const a = stack.pop();
+    case "!": {
       let r = [];
       if(is_atomic(a)){
         for(let i = 0; i < a; i ++){
           r.push(i+1);
         }
-        stack.push(array([r.length], r));
+        return array([r.length], r);
       } else {
         let exists = [];
         for(let i = 0; i < a.ravel.length; i ++){
@@ -1046,13 +863,11 @@ function apply_f(f){
             r.push(exists.length);
           } else r.push(f+1);
         }
-        stack.push(array(a.shape, r));
+        return array(a.shape, r);
       }
-      break;
     }
-    case BC.INDICESOF: {
-      let a = stack.pop();
-      let b = stack.pop();
+
+    case "⍳": {
       if(is_atomic(b)) b = array([1], [b]);
       if(is_atomic(a)) a = array([1], [a]);
 
@@ -1062,438 +877,266 @@ function apply_f(f){
       }
 
       let r = array([0], []);
-      let upto = array([0, ...b.shape.slice(1)], []);
-      const per = b.ravel.length / b.shape[0];
-      for(let i = 0; i < b.shape[0]; i ++){
-        upto.ravel = upto.ravel.concat(b.ravel.slice(i * per, i * per + per));
+      let upto = array([0, ...a.shape.slice(1)], []);
+      const per = a.ravel.length / a.shape[0];
+      for(let i = 0; i < a.shape[0]; i ++){
+        upto.ravel = upto.ravel.concat(a.ravel.slice(i * per, i * per + per));
         upto.shape[0] ++;
 
-        if(upto.shape[0] > a.shape[0]) {
+        if(upto.shape[0] > b.shape[0]) {
           upto.ravel.splice(0, per);
           upto.shape[0] --;
         }
 
-        if(is_match(upto, a)){
-          r.ravel.push(i - a.shape[0] + 2);
+        if(is_match(upto, b)){
+          r.ravel.push(i - b.shape[0] + 2);
           r.shape[0] ++;
         }
       }
-      stack.push(r);
-      break;
+      return r;
     }
-    case BC.FINDSEQ: {
-      let a = stack.pop();
-      let b = stack.pop();
+    case "⍸": {
       if(is_atomic(b)) b = array([1], [b]);
       if(is_atomic(a)) a = array([1], [a]);
 
       let r = array([0], []);
-      let upto = array([0, ...b.shape.slice(1)], []);
-      const per = b.ravel.length / b.shape[0];
-      for(let i = 0; i < b.shape[0]; i ++){
-        upto.ravel = upto.ravel.concat(b.ravel.slice(i * per, i * per + per));
+      let upto = array([0, ...a.shape.slice(1)], []);
+      const per = a.ravel.length / a.shape[0];
+      for(let i = 0; i < a.shape[0]; i ++){
+        upto.ravel = upto.ravel.concat(a.ravel.slice(i * per, i * per + per));
         upto.shape[0] ++;
 
         r.ravel.push(0);
         r.shape[0] ++;
 
-        if(upto.shape[0] > a.shape[0]) {
+        if(upto.shape[0] > b.shape[0]) {
           upto.ravel.splice(0, per);
           upto.shape[0] --;
         }
 
-        if(is_match(upto, a)){
-          r.ravel[i - a.shape[0] + 1] = 1;
+        if(is_match(upto, b)){
+          r.ravel[i - b.shape[0] + 1] = 1;
         }
       }
-      stack.push(r);
-      break;
+      return r;
     }
-    case BC.TAKEDROP: {
-      let a = stack.pop();
-      let l = stack.length-1;
-      if(is_atomic(stack[l])) stack[l] = array([1], [stack[l]]);
-      
-      if(a < 0) {
-        stack[l].ravel = stack[l].ravel.slice(-a * stack[l].ravel.length / stack[l].shape[0], stack[l].ravel.length);
-        stack[l].shape[0] -= a;
-      } else {
-        stack[l].ravel = stack[l].ravel.slice(0, a * stack[l].ravel.length / stack[l].shape[0]);
-        stack[l].shape[0] = a;
-      }
-      break;
-    }
-    case BC.RESHAPE: {
-      let a = stack.pop();
+    case "&": {
       if(is_atomic(a)) a = array([1], [a]);
-      if(a.shape.length > 1) return [false, "Cannot reshape with non-vector shape."];
+      
+      let acpy = JSON.parse(JSON.stringify(a));
 
-      let re = stack.pop();
+      if(b < 0) {
+        acpy.ravel = acpy.ravel.slice(-b * acpy.ravel.length / acpy.shape[0], acpy.ravel.length);
+        acpy.shape[0] -= b;
+      } else {
+        acpy.ravel = acpy.ravel.slice(0, b * acpy.ravel.length / acpy.shape[0]);
+        acpy.shape[0] = b;
+      }
+      return acpy;
+    }
+    case "⍴": {
+      if(is_atomic(b)) b = array([1], [b]);
+      if(b.shape.length > 1) return [false, "Cannot reshape with non-vector shape."];
+
+      let re = a;
       if(is_atomic(re)) re = array([1], [re]);
 
       let r = [];
-      const totallen = a.ravel.reduce((a,b)=>a*b, 1);
+      const totallen = b.ravel.reduce((a,b)=>a*b, 1);
       for(let i = 0; i < totallen; i ++){
         r.push(re.ravel[i % re.ravel.length]);
       }
-      stack.push(array(a.ravel, r));
-      break;
+      return array(b.ravel, r);
     }
-    case BC.GRADEUP: {
-      let a_full = stack.pop();
+    case "⍋": {
       let r = [];
-      let a = a_full.ravel;
-      for (let i = 0; i < a.length; i++) {
-        a[i] = [a[i], i];
+      let ar = a.ravel;
+      for (let i = 0; i < ar.length; i++) {
+        ar[i] = [ar[i], i];
       }
-      a.sort(function(a, b) {
+      ar.sort(function(a, b) {
         return a[0] < b[0] ? -1 : 1;
       });
-      stack.push(array(a_full.shape, a.map(a=>a[1]+1)));
-      break;
+      return array(a.shape, ar.map(a=>a[1]+1));
     }
-    case BC.GRADEDOWN: {
-      let a_full = stack.pop();
+    case "⍒": {
       let r = [];
-      let a = a_full.ravel;
-      for (let i = 0; i < a.length; i++) {
-        a[i] = [a[i], i];
+      let ar = a.ravel;
+      for (let i = 0; i < ar.length; i++) {
+        ar[i] = [ar[i], i];
       }
-      a.sort(function(a, b) {
+      ar.sort(function(a, b) {
         return a[0] > b[0] ? -1 : 1;
       });
-      stack.push(array(a_full.shape, a.map(a=>a[1]+1)));
-      break;
-    }
-    case BC.POP: {
-      while(stack.length) stack.pop();
-      break;
-    }
-    case BC.POPM: {
-      const tmp = stack.pop();
-      stack.pop();
-      stack.push(tmp);
-      break;
-    }
-    case BC.POPD: {
-      const tmp = stack.pop();
-      stack.pop();
-      stack.pop();
-      stack.push(tmp);
-      break;
-    }
-    case BC.OMEGA: {
-      stack.push(JSON.parse(JSON.stringify(env['⍵'])));
-      break;
-    }
-    case BC.ALPHA: {
-      stack.push(JSON.parse(JSON.stringify(env['⍺'])));
-      break;
+      return array(a.shape, ar.map(a=>a[1]+1));
     }
 
     default:
-      return [false, "bytecode error on '" + Object.keys(BC).find(k => BC[k] === f) + "'"];
+      return [false, "internalerror on function '" + JSON.stringify(f) + "'"];
+  }
+}
+
+function apply_f_fullmods(f, a, b, brack){
+  if(f.type === "MODIFIER"){
+    switch(f.modifier){
+      case "/": {
+        const arr = a;
+
+        const per = arr.ravel.length / arr.shape[0];
+
+        if(arr.shape[0] === 0) return array(arr.shape.slice(1), new Array(arr.shape.slice(1).reduce((a,b)=>a*b, 1)).fill().map(_=>0));
+        else if(arr.shape[0] === 1) return arr.shape.length === 1 ? arr.ravel[0] : array(arr.shape.slice(1), arr.ravel);
+
+        else {
+          const z = arr.ravel.slice(0, per);
+          let res = arr.shape.length === 1 ? z[0] : array(arr.shape.slice(1), z);
+          for(let i = 1; i < arr.shape[0]; i ++){
+            const z = arr.ravel.slice(i * per, i * per + per);
+            const r = apply_f_fullmods(f.fn, arr.shape.length === 1 ? z[0] : array(arr.shape.slice(1), z), res);
+            if(r.length && r[0] === false) return r;
+            res = r;
+          }
+          return res;
+        }
+      }
+      case "\\": {
+        const arr = a;
+
+        const per = arr.ravel.length / arr.shape[0];
+
+        if(arr.shape[0] === 0) return array([0, ...arr.shape.slice(1)], []);
+        else if(arr.shape[0] === 1) return array([1, ...arr.shape.slice(1)], arr.ravel);
+
+        else {
+          let result = array(arr.shape, []);
+          const z = arr.ravel.slice(0, per);
+          let prev = arr.shape.length === 1 ? z[0] : array(arr.shape.slice(1), z);
+          result.ravel = result.ravel.concat(z);
+          for(let i = 1; i < arr.shape[0]; i ++){
+            const z = arr.ravel.slice(i * per, i * per + per);
+            const r = apply_f_fullmods(f.fn, arr.shape.length === 1 ? z[0] : array(arr.shape.slice(1), z), prev);
+            if(r.length && r[0] === false) return r;
+            result.ravel = result.ravel.concat(is_atomic(r) ? r : r.ravel);
+            prev = r;
+          }
+          return result;
+        }
+      }
+      case "?": {
+        const cond = a;
+        if(is_atomic(cond) ? cond : cond.ravel[0]) {
+          return apply_f_fullmods(f.fn);
+        } else {
+          return apply_f_fullmods(f.fn2);
+        }
+      }
+      case "⍣": {
+        let prev = a;
+        while(1){
+          const r = apply_f_fullmods(f.fn, prev, b);
+          if(r.length && r[0] === false) return r;
+          
+          const is_exit = apply_f_fullmods(f.fn2, r, prev);
+          if(is_exit.length && is_exit[0] === false) return is_exit;
+
+          if(is_exit === 1) break;
+
+          prev = r;
+        }
+        return prev;
+      }
+      case "⌺": {
+        let prev = a;
+        for(let i = 0; i < exec(f.count); i ++){
+          prev = apply_f_fullmods(f.fn, prev, b);
+          if(prev.length && prev[0] === false) return prev;
+        }
+        return prev;
+      }
+
+      default:
+        return [false, "internalerror on modifier '" + JSON.stringify(f.modifier) + "'"];
+    }
+  } else if(f.type === "FUNCTION") {
+    if((b !== undefined) !== f.dyadic) return [false, "error: Function called with incorrect arity"];
+    return exec(f.expression, a, b);
+  } else if(f.type === "NAME") {
+    return apply_f_fullmods(env[f.value], a, b, brack);
+  } else {
+    if(f.type !== "PRIMITIVE") return [false, "internalerror on function type '" + JSON.stringify(f) + "'"]
+    return apply_f(f.value, a, b, brack);
   }
 }
 
 let env = {};
-function vm(bc, alpha, omega){
-  const env_cpy = JSON.parse(JSON.stringify(env));
 
-  //printBC(bc);
-  env["⍵"] = omega === undefined ? omega : JSON.parse(JSON.stringify(omega));
-  env["⍺"] = alpha === undefined ? alpha : JSON.parse(JSON.stringify(alpha));
+let current_function;
+function exec(src, omega, alpha){
+  switch(src.type){
+    case "EXPRLIST": {
+      let old_current_function = current_function;
+      current_function = { type: "FUNCTION", dyadic: alpha !== undefined, expression: src};
+      
+      const past_env = JSON.parse(JSON.stringify(env));
 
-  let pc = 0;
-  while(pc < bc.length){
-    if(bc[pc] === BC.ASSIGNFN){
-      const name = bc[++pc];
-      let val = bc[++pc];
-      if(!Array.isArray(val[1]) && val[1] === BC.RECUR){
-        val[1] = JSON.parse(JSON.stringify(bc));
-      }
-      env[name] = val;
-
-      pc ++;
-      continue;
-    }
-
-    let modifier_stack = [];
-
-    while(pc < bc.length && bc[pc] === BC.CONST || bc[pc] === BC.NAME){
-      if(bc[pc] === BC.NAME) {
-        const res = JSON.parse(JSON.stringify(env[bc[++pc]]));
-        if(Array.isArray(res)) {
-          const r = vm(res); // todo: dyadic/monadic
+      if(src.toplevel){
+        let ret = "";
+        for(let e of src.exprs){
+          const r = exec(e, omega, alpha);
           if(r.length && r[0] === false) return r;
+          if(e.type !== "ASSIGN") ret = ret + "\n" + Stringify(r);
         }
-        else stack.push(res);
-      }
-      else stack.push(bc[++pc]);
-      pc ++;
-    }
-
-    while(pc < bc.length && [BC.FOLD, BC.SCAN, BC.REPEAT, BC.UNTIL, BC.IF].includes(bc[pc])){
-      modifier_stack.push(bc[pc++]);
-    }
-
-    if(pc >= bc.length) continue;
-
-    if(bc[pc] === BC.ASSIGN){
-      if(modifier_stack.length) return [false, "bytecode error: modifiers for ←"];
-      env[bc[++pc]] = stack.pop();
-      stack.push(JSON.parse(JSON.stringify(env[bc[pc]])));
-      pc ++;
-      continue;
-    }
-
-    if(modifier_stack.length === 0) {
-      if(bc[pc] === BC.MFUNCTION || bc[pc] === BC.DFUNCTION) {
-        const dy = bc[pc] === BC.DFUNCTION;
-        let alpha, omega;
-        if(dy){
-          alpha = stack.pop();
-          omega = stack.pop();
-        } else {
-          omega = stack.pop();
-        }
-        const r = vm(bc[++pc], alpha, omega);
-        if(r.length && r[0] === false) return r;
-      } else if(bc[pc] === BC.RECUR){
-        const r = vm(bc); // todo: dyadic/monadic
-        if(r.length && r[0] === false) return r;
+        current_function = old_current_function;
+        env = past_env;
+        return ret;
       } else {
-        const r = apply_f(bc[pc]);
-        if(r) return r;
-      }
-    } else {
-      let to_f;
-      if(bc[pc] === BC.MFUNCTION || bc[pc] === BC.DFUNCTION){
-        const dy = bc[pc] === BC.DFUNCTION;
-        pc++;
-        const func = bc[pc];
-        to_f = () => {
-          let alpha, omega;
-          if(dy){
-            alpha = stack.pop();
-            omega = stack.pop();
-          } else {
-            omega = stack.pop();
-          }
-          const r = vm(func, alpha, omega);
-          if(r.length && r[0] === false) return r;
-        };
-      }
-      else if(bc[pc] === BC.RECUR){
-        to_f = () => {
-          const r = vm(bc); // todo: dyadic/monadic
-          if(r.length && r[0] === false) return r;
+        let ret;
+        for(let e of src.exprs){
+          ret = exec(e, omega, alpha);
+          if(ret.length && ret[0] === false) return ret;
         }
+        current_function = old_current_function;
+        env = past_env;
+        return ret;
       }
-      else {
-        const func = bc[pc];
-        to_f = () => {
-          const r = apply_f(func);
-          if(r) return r;
-        };
-      }
-      while(modifier_stack.length > 0){
-        const pm = modifier_stack.pop();
-        const old_f = to_f;
-        let second_f;
-        if([BC.UNTIL, BC.IF].includes(pm)) {
-          pc ++;
-          if(bc[pc] === BC.MFUNCTION || bc[pc] === BC.DFUNCTION){
-            const dy = bc[pc] === BC.DFUNCTION;
-            pc++;
-            const func = bc[pc];
-            second_f = () => {
-              let alpha, omega;
-              if(dy){
-                alpha = stack.pop();
-                omega = stack.pop();
-              } else {
-                omega = stack.pop();
-              }
-              const r = vm(func, alpha, omega);
-              if(r.length && r[0] === false) return r;
-            };
-          }
-          else if(bc[pc] === BC.RECUR){
-            second_f = () => {
-              const r = vm(bc); // todo: dyadic/monadic
-              if(r.length && r[0] === false) return r;
-            }
-          }
-          else {
-            const func = bc[pc];
-            second_f = () => {
-              const r = apply_f(func);
-              if(r) return r;
-            };
-          }
-        }
-        switch(pm){
-          case BC.FOLD: {
-            to_f = () => {
-              const arr = stack.pop();
-
-              const per = arr.ravel.length / arr.shape[0];
-
-              if(arr.shape[0] === 0) stack.push(array(arr.shape.slice(1), new Array(arr.shape.slice(1).reduce((a,b)=>a*b, 1)).fill().map(_=>0)));
-              else if(arr.shape[0] === 1) stack.push(arr.shape.length === 1 ? arr.ravel[0] : array(arr.shape.slice(1), arr.ravel));
-
-              else {
-                const z = arr.ravel.slice(0, per);
-                stack.push(arr.shape.length === 1 ? z[0] : array(arr.shape.slice(1), z));
-                for(let i = 1; i < arr.shape[0]; i ++){
-                  const z = arr.ravel.slice(i * per, i * per + per);
-                  stack.push(arr.shape.length === 1 ? z[0] : array(arr.shape.slice(1), z));
-
-                  const r = old_f();
-                  if(r) return r;
-                }
-              }
-            };
-            break;
-          }
-
-          case BC.SCAN: {
-            to_f = () => {
-              const arr = stack.pop();
-
-              const per = arr.ravel.length / arr.shape[0];
-
-              if(arr.shape[0] === 0) stack.push(array([0, ...arr.shape.slice(1)], []));
-              else if(arr.shape[0] === 1) stack.push(array([1, ...arr.shape.slice(1)], arr.ravel));
-
-              else {
-                let result = array(arr.shape, []);
-                const z = arr.ravel.slice(0, per);
-                stack.push(arr.shape.length === 1 ? z[0] : array(arr.shape.slice(1), z));
-                result.ravel = result.ravel.concat(z);
-                for(let i = 1; i < arr.shape[0]; i ++){
-                  const z = arr.ravel.slice(i * per, i * per + per);
-                  stack.push(arr.shape.length === 1 ? z[0] : array(arr.shape.slice(1), z));
-
-                  const r = old_f();
-                  if(r) return r;
-                  result.ravel = result.ravel.concat(is_atomic(stack[stack.length - 1]) ? stack[stack.length - 1] : stack[stack.length - 1].ravel);
-                }
-                stack.pop();
-                stack.push(result);
-              }
-            };
-            break;
-          }
-
-          case BC.REPEAT: {
-            to_f = () => {
-              const times = stack.pop();
-              const start = stack.pop();
-              stack.push(mpervade(a=>{
-                stack.push(start);
-                for(let i = 0; i < a; i ++){
-                  old_f();
-                }
-                return stack.pop();
-              }, times));
-            }
-            break;         
-          }
-
-          // todo: dyadic
-          case BC.UNTIL: {
-            to_f = () => {
-              let prev = false;
-              while(1){
-                old_f();
-                const new_prev = JSON.parse(JSON.stringify(stack[stack.length - 1]));
-                if(prev !== false) {
-                  const stack_copy = JSON.parse(JSON.stringify(stack));
-                  stack.push(prev);
-                  second_f();
-                  let result = stack.pop();
-                  stack = stack_copy;
-                  if(result === 1) break;
-                }
-                prev = new_prev;
-              }
-            }
-            break;
-          }
-
-          case BC.IF: {
-            to_f = () => {
-              const cond = stack.pop();
-
-              let diff = 0;
-              const stack_copy = JSON.parse(JSON.stringify(stack));
-              if(is_atomic(cond) ? cond : cond.ravel[0]){
-                old_f();
-              } else {
-                second_f();
-              }
-              const res = stack.pop();
-              diff = stack_copy.length - stack.length;
-              stack = stack_copy;
-
-              for(let i = 0; i < diff; i ++) stack.pop();
-              stack.push(res);
-            }
-            break;
-          }
-
-          default:
-            return [false, "bytecode error on '" + Object.keys(BC).find(k=>BC[k]===pm) + "'"];
-        }
-      }
-
-      const r = to_f();
-      if(r) return r;
     }
-    
-    pc ++;
-
-    if(bc[pc] === BC.ASSIGN){
-      env[bc[++pc]] = stack.pop();
-      stack.push(JSON.parse(JSON.stringify(env[bc[pc]])));
-      pc ++;
+    case "ASSIGN": {
+      const e = exec(src.value, omega, alpha);
+      if(e && e.length && e[0] === false) return e;
+      env[src.name] = e;
+      return JSON.parse(JSON.stringify(env[src.name]));
     }
+    case "NAME": {
+      return JSON.parse(JSON.stringify(env[src.value]));
+    }
+    case "CONST": {
+      return src.value;      
+    }
+    case "CALL": {
+      const a = src.rhs ? exec(src.rhs, omega, alpha) : src.rhs;
+      if(a && a.length && a[0] === false) return a;
+      const brack = src.bracket ? exec(src.bracket, omega, alpha) : src.bracket;
+      if(brack && brack.length && brack[0] === false) return brack;
+      const b = src.lhs ? exec(src.lhs, omega, alpha) : src.lhs;
+      if(b && b.length && b[0] === false) return b;
+
+      return apply_f_fullmods(src.fn, a, b, brack);
+    }
+    case "OMEGA": {
+      return JSON.parse(JSON.stringify(omega));
+    }
+    case "ALPHA": {
+      return JSON.parse(JSON.stringify(alpha));
+    }
+    case "ASSIGNFN":{
+      if(src.fn.type === "PRIMITIVE" && src.fn.value === "∇") env[src.name] = current_function;
+      else env[src.name] = src.fn;
+      return false;
+    }
+
+    default:
+      return [false, "internalerror: node type " + src.type];
   }
-
-  if(array_stack.length) return [false, '): Mismatched parenthesis'];
-
-  env = env_cpy;
-
-  return stack.map(Stringify).join("\n");
-}
-
-function Stringify(v){
-  if(typeof(v) === 'object') {
-    let scanshape = [];
-    let prev = 1;
-    for(let i = v.shape.length - 1; i >= 0; i --){
-      prev *= v.shape[i];
-      scanshape.push(prev);
-    }
-    let r = "";
-    if(!v.ravel.length) {
-      if(v.shape.length > 1) r += '⍬[' + v.shape + ']';  // todo: actual format
-      else r += '⍬';
-    }
-    for(let i = 0; i < v.ravel.length; i ++){
-      if(i !== 0){
-        for(let s of scanshape){
-          if(i % s === 0) r += "\n";
-        }
-      }
-
-      r += ''+v.ravel[i] + (typeof(v.ravel[i]) === 'string' ? "" : " ");
-    }
-    return r;
-  }
-  else return ''+v;
 }
 
 function execSource(v){
@@ -1529,11 +1172,10 @@ function execSource(v){
     return parsed[1] + '\n\n... ' + rstring + '\n    ↑ here';
   }
 
-  stack = [];
-  array_stack = [];
-  const res = vm(parsed);
-  if(res.length && res[0] === false) return res[1];
-  return res;
+  env = {};
+  let e = exec(parsed);
+  if(e.length && e[0] === false) return e[1];
+  return e;
 }
 
 runresult.innerText = execSource(text.value);
