@@ -4,10 +4,9 @@ const bar = document.getElementById("languagebar");
 const text = document.getElementById("srcinput");
 
 const examples = [
- /* "'factorial of 5 is'\n×/!5", 
+  "'factorial of 5 is'\n×/!5", 
   "⌽(⍒+\\' '=s)⊂s←' talF LPA .selur'", 
-  "s←'questionably, beatably, deniably, doubtedly,'\n¯1&' un'⊥[' '=r]r←' ',s\n'the best language ever'",
-  */"1 + 3 ⍝ four 'a quoted comment' more comment"
+  "s←'questionably, beatably, deniably, doubtedly,'\n¯1&' un'⊥[' '=r]r←' ',s\n'the best language ever'"
 ];
 
 let example_index = Math.floor(Math.random() * examples.length);
