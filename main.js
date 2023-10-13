@@ -803,8 +803,8 @@ function apply_f(f, a, b, brack){
       return acpy;
     }
     case "⍪": {
-      if(is_atomic(a)) a = array([1], [...a]);
-      if(is_atomic(b)) b = array([1], [...b]);
+      if(is_atomic(a)) a = array([1], [a]);
+      if(is_atomic(b)) b = array([1], [b]);
 
       if(a.shape.length !== b.shape.length) return [false, "Laminate: Rank error"];
       for(let i = 0; i < a.shape.length; i ++){
@@ -817,8 +817,8 @@ function apply_f(f, a, b, brack){
       return bcpy;
     }
     case ",": {
-      if(is_atomic(a)) a = array([1], [...a]);
-      if(is_atomic(b)) b = array([1], [...b]);
+      if(is_atomic(a)) a = array([1], [a]);
+      if(is_atomic(b)) b = array([1], [b]);
 
       let bcpy = JSON.parse(JSON.stringify(b));
 
