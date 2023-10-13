@@ -143,6 +143,9 @@ html, body {
 .hi_e {
   color: #f00;
 }
+.hi_l {
+  color: #439c28;
+}
 
 #runresult {
   background: none;

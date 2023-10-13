@@ -4,9 +4,10 @@ const bar = document.getElementById("languagebar");
 const text = document.getElementById("srcinput");
 
 const examples = [
-  "'factorial of 5 is'\n×/!5", 
+ /* "'factorial of 5 is'\n×/!5", 
   "⌽(⍒+\\' '=s)⊂s←' talF LPA .selur'", 
   "s←'questionably, beatably, deniably, doubtedly,'\n¯1&' un'⊥[' '=r]r←' ',s\n'the best language ever'",
+  */"1 + 3 ⍝ four 'a quoted comment' more comment"
 ];
 
 let example_index = Math.floor(Math.random() * examples.length);
@@ -33,7 +34,7 @@ text.addEventListener("keydown", e => {
   }
 }, false);
 
-const glyphs = "⍬ + ¯ - × ÷ ⌹ * ⍟ ↑ ↓ ~ | ⌈ ⌊ % < ≤ = ≥ > ≠ ≡ ≢ ⊃ ⊂ ⊆ ⊥ ⊤ ⍳ ⍸ ⍒ ⍋ ⌽ ⊖ & , ⍪ # ! ⍴ ⍣ / \\ ? ← ⍅ () '' ⍺ ⍵ ∇ {} [] ⋄";
+const glyphs = "⍬ + ¯ - × ÷ ⌹ * ⍟ ↑ ↓ ~ | ⌈ ⌊ % < ≤ = ≥ > ≠ ≡ ≢ ⊃ ⊂ ⊆ ⊥ ⊤ ⍳ ⍸ ⍒ ⍋ ⌽ ⊖ & , ⍪ # ! ⍴ ⍣ / \\ ? ← ⍅ () '' ⍺ ⍵ ∇ {} [] ⋄ ⍝";
 const functions = "+¯-×÷⌹*⍟↑↓~|⌈⌊%<≤=≥>≠≡≢⊃⊂⊆⊥⊤⍳⍸⍒⍋⌽⊖&,⍪#!⍴()∇";
 const modifiers = "⍣/\\?";
 const constants = "⍬1234567890.";
@@ -95,10 +96,11 @@ const info = {
   "{}": "Defined function", 
   "[]": "Axis-index",
   "''": "String",
-  "⋄": "Statement separator"
+  "⋄": "Statement separator",
+  "⍝": "Comment"
 }
 
-const hl_class = g => stackers.includes(g) ? 'hi_k' : functions.includes(g) ? 'hi_f' : modifiers.includes(g) ? 'hi_m' : g[0] === "'" ? 'hi_s' : constants.includes(g) ? 'hi_c' : g[0] === "\\" ? 'hi_e' : g[0] === "¯" ? 'hi_c' : false;
+const hl_class = g => stackers.includes(g) ? 'hi_k' : functions.includes(g) ? 'hi_f' : modifiers.includes(g) ? 'hi_m' : g[0] === "'" ? 'hi_s' : constants.includes(g) ? 'hi_c' : g[0] === "\\" ? 'hi_e' : g[0] === "¯" ? 'hi_c' : g[0] === "⍝" ? 'hi_l' : false;
 
 function hl(s){
   const smap = {
@@ -111,13 +113,18 @@ function hl(s){
   };
   const sanitize = s=>s.replace(/[&<>"'/]/ig, match=>smap[match]);
 
-  s = s.split(/('(?:[^'\\]|\\.)*')/);
-
-  s = s.map(v => {
-    if(v[0] !== "'"){
-      return v.replace(new RegExp("¯[0-9.]|" + [...functions, ...modifiers, ...constants].map(f=>f.match(/[0-9]/)?f:"\\"+f).join("|"), "g"), f=>"<span class=\"" + hl_class(f) + "\">" + sanitize(f) +"</span>");
+  // todo: split on comments
+  s = s.split(/(⍝.*(?:\n|$))/).map(v => {
+    if(v[0] !== "⍝"){
+      return v.split(/('(?:[^'\\]|\\.)*')/).map(v => {
+        if(v[0] !== "'"){
+          return v.replace(new RegExp("¯[0-9.]|" + [...functions, ...modifiers, ...constants].map(f=>f.match(/[0-9]/)?f:"\\"+f).join("|"), "g"), f=>"<span class=\"" + hl_class(f) + "\">" + sanitize(f) +"</span>");
+        } else {
+          return "<span class='hi_s'>" + v.split(/(\\.)/g).map(c => c.length === 2 && c[0] === "\\" ? "<span class='hi_e'>" + sanitize(c) + "</span>" : c).join("") + "</span>";
+        }
+      }).join("");
     } else {
-      return "<span class='hi_s'>" + v.split(/(\\.)/g).map(c => c.length === 2 && c[0] === "\\" ? "<span class='hi_e'>" + sanitize(c) + "</span>" : c).join("") + "</span>";
+      return "<span class='hi_l'>" + sanitize(v) + "</span>";
     }
   }).join("");
 
@@ -337,7 +344,7 @@ function parse_function(ts){
   return res;
 }
 
-const terminators = ")]}\n⋄";
+const terminators = ")]}\n⋄⍝";
 
 function is_value(t){
   return t === "(" || t === "⍵" || t === "⍺" || (typeof(t) === 'string' && !glyphs.includes(t) && isLowerCase(t[0])) || typeof(t) === 'number' || t === '⍬' || (t.length && t[0] === "'");
@@ -389,7 +396,7 @@ function parse_expression(ts){
 }
 
 function parse(ts, toplevel){
-  while(ts.length > 0 && "\n⋄".includes(ts[0])) ts.shift();
+  while(ts.length > 0 && "\n⋄⍝".includes(ts[0])) if(ts.shift() === "⍝") while(ts.length > 0 && ts[0] !== "\n") ts.shift();
 
   let res = [];
   for(let i = 0; i < 100 && ts.length > 0 && ts[0] !== "}"; i ++){
@@ -397,7 +404,7 @@ function parse(ts, toplevel){
     if(r.length && r[0] === false) return r;
     res.push(r);
 
-    while(ts.length > 0 && "\n⋄".includes(ts[0])) ts.shift();
+    while(ts.length > 0 && "\n⋄⍝".includes(ts[0])) if(ts.shift() === "⍝") while(ts.length > 0 && ts[0] !== "\n") ts.shift();
   }
 
   return { type: "EXPRLIST", exprs: res, toplevel };
